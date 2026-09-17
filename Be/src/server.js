@@ -22,8 +22,8 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Vét Tủ API is running 🚀' });
 });
 
-// Routes placeholders
-// app.use('/api/auth', require('./routes/authRoutes'));
+// API Routes
+app.use('/api/auth', require('./routes/authRoutes'));
 // app.use('/api/recipes', require('./routes/recipeRoutes'));
 // app.use('/api/shares', require('./routes/shareRoutes'));
 

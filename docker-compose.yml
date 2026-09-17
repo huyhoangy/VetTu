@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # MongoDB Database Service
+  mongodb:
+    image: mongo:latest
+    container_name: vettu-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: vettu_db
+    volumes:
+      - mongodb_data:/data/db
+
+  # (Optional) Mongo Express - Web GUI for managing MongoDB in browser at http://localhost:8081
+  mongo-express:
+    image: mongo-express:latest
+    container_name: vettu-mongo-express
+    restart: always
+    ports:
+      - "8085:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      - mongodb
+
+volumes:
+  mongodb_data:
+    driver: local

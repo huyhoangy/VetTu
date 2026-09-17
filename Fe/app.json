@@ -2,25 +2,24 @@
   "expo": {
     "name": "ChefMatch (Vét Tủ)",
     "slug": "chefmatch-vettu",
+    "scheme": "vettu",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vettu.chefmatch"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },
       "package": "com.vettu.chefmatch"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
     }
   }
 }
+
