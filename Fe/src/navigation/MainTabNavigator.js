@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/home/HomeScreen';
+import HomeStackNavigator from './HomeStackNavigator';
 import { Colors } from '../constants/colors';
 
 const Tab = createBottomTabNavigator();
@@ -39,7 +40,7 @@ const MainTabNavigator = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName = 'restaurant-outline';
 
-          if (route.name === 'Home') {
+          if (route.name === 'HomeTab') {
             iconName = focused ? 'fast-food' : 'fast-food-outline';
           } else if (route.name === 'Community') {
             iconName = focused ? 'people' : 'people-outline';
@@ -52,8 +53,8 @@ const MainTabNavigator = () => {
       })}
     >
       <Tab.Screen
-        name="Home"
-        component={HomeScreen}
+        name="HomeTab"
+        component={HomeStackNavigator}
         options={{ tabBarLabel: 'Vét Tủ' }}
       />
       <Tab.Screen

@@ -2,8 +2,8 @@ import axiosClient from './axiosClient';
 
 export const recipeApi = {
   // POST /api/recipes/match
-  matchRecipes: (ingredients) => {
-    return axiosClient.post('/recipes/match', { ingredients });
+  matchRecipes: (ingredients, appliance = 'ALL') => {
+    return axiosClient.post('/recipes/match', { ingredients, appliance });
   },
 
   // GET /api/recipes

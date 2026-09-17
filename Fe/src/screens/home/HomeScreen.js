@@ -1,14 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import CustomButton from '../../components/common/CustomButton';
 import { useAuth } from '../../context/AuthContext';
+import recipeApi from '../../api/recipeApi';
 
-const HomeScreen = () => {
+const HomeScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
   const insets = useSafeAreaInsets();
+  const [recipeCount, setRecipeCount] = useState(8);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const res = await recipeApi.getAllRecipes();
+        if (res.success && res.count) {
+          setRecipeCount(res.count);
+        }
+      } catch (err) {
+        // Fallback default
+      }
+    };
+    loadStats();
+  }, []);
 
   const handleLogout = () => {
     Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất?', [
@@ -52,11 +68,11 @@ const HomeScreen = () => {
         <Text style={styles.heroEmoji}>🥦🍳🥘</Text>
         <Text style={styles.heroTitle}>Tủ lạnh hôm nay còn gì?</Text>
         <Text style={styles.heroDesc}>
-          Chọn nhanh các nguyên liệu bạn đang có để AI gợi ý ngay món ăn phù hợp nhất!
+          Chọn nhanh các nguyên liệu bạn đang có để thuật toán gợi ý ngay món ăn phù hợp nhất!
         </Text>
         <CustomButton
           title="Bắt đầu Vét Tủ 🚀"
-          onPress={() => Alert.alert('Thông báo', 'Tính năng gợi ý món ăn sẽ được phát triển tiếp theo!')}
+          onPress={() => navigation.navigate('Pantry')}
           style={styles.heroButton}
         />
       </View>
@@ -65,7 +81,7 @@ const HomeScreen = () => {
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <Ionicons name="restaurant-outline" size={24} color={Colors.primary} />
-          <Text style={styles.statValue}>120+</Text>
+          <Text style={styles.statValue}>{recipeCount}+</Text>
           <Text style={styles.statLabel}>Công thức</Text>
         </View>
         <View style={styles.statBox}>

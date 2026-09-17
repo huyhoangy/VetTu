@@ -52,6 +52,11 @@ const recipeSchema = new mongoose.Schema(
       enum: ['EASY', 'MEDIUM', 'HARD'],
       default: 'EASY',
     },
+    appliance: {
+      type: String,
+      enum: ['STOVE', 'AIRFRYER', 'RICE_COOKER', 'MICROWAVE', 'ALL'],
+      default: 'ALL',
+    },
     ingredients: [ingredientItemSchema],
     // Normalized list of ingredient names for fast querying & matching
     ingredientKeywords: [
