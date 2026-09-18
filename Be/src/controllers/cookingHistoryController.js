@@ -43,22 +43,44 @@ const recordCookingHistory = async (req, res, next) => {
       servings: recipe.servings || 2,
     };
 
-    const newHistory = await CookingHistory.create({
+    // Find existing history record for this recipe and user
+    let existing = await CookingHistory.findOne({
       user: currentUserId,
-      recipe: recipe._id,
-      recipeSnapshot: snapshot,
-      rating: rating !== undefined ? Number(rating) : 5,
-      notes: notes || '',
-      servingsCooked: servingsCooked ? Number(servingsCooked) : (recipe.servings || 2),
-      cookedAt: new Date(),
+      $or: [
+        { recipe: recipe._id },
+        { 'recipeSnapshot.title': recipe.title },
+      ],
     });
 
-    // Count total cooked
+    let historyRecord;
+    if (existing) {
+      existing.recipe = recipe._id;
+      existing.recipeSnapshot = snapshot;
+      if (rating !== undefined) existing.rating = Number(rating);
+      if (notes !== undefined) existing.notes = notes;
+      if (servingsCooked) existing.servingsCooked = Number(servingsCooked);
+      existing.cookedAt = new Date();
+      existing.timesCooked = (existing.timesCooked || 1) + 1;
+      historyRecord = await existing.save();
+    } else {
+      historyRecord = await CookingHistory.create({
+        user: currentUserId,
+        recipe: recipe._id,
+        recipeSnapshot: snapshot,
+        rating: rating !== undefined ? Number(rating) : 5,
+        notes: notes || '',
+        servingsCooked: servingsCooked ? Number(servingsCooked) : (recipe.servings || 2),
+        timesCooked: 1,
+        cookedAt: new Date(),
+      });
+    }
+
+    // Count distinct recipes cooked
     const totalCount = await CookingHistory.countDocuments({ user: currentUserId });
 
     return res.status(201).json({
       success: true,
-      data: newHistory,
+      data: historyRecord,
       totalCooked: totalCount,
       message: `Đã lưu món "${recipe.title}" vào lịch sử nấu ăn! 🎉`,
     });
@@ -96,22 +118,35 @@ const getCookingHistory = async (req, res, next) => {
       .populate('recipe')
       .sort({ cookedAt: -1 });
 
-    // Compute comprehensive statistics
+    // Deduplicate by dish title / recipe ID to always show only the latest record for each dish
+    const uniqueHistoryMap = new Map();
+    historyItems.forEach((item) => {
+      const key = (item.recipeSnapshot?.title || item.recipe?.title || item._id.toString()).trim().toLowerCase();
+      if (!uniqueHistoryMap.has(key)) {
+        uniqueHistoryMap.set(key, item);
+      }
+    });
+    const deduplicatedItems = Array.from(uniqueHistoryMap.values());
+
+    // Compute comprehensive statistics across unique dishes
     const allUserHistory = await CookingHistory.find({ user: currentUserId });
     const totalCooked = allUserHistory.length;
 
     let totalMinutes = 0;
     let ratingSum = 0;
+    let totalCookSessions = 0;
     const titleCounts = {};
 
     allUserHistory.forEach((item) => {
       const prep = item.recipeSnapshot?.prepTimeMinutes || item.recipe?.prepTimeMinutes || 0;
       const cook = item.recipeSnapshot?.cookTimeMinutes || item.recipe?.cookTimeMinutes || 0;
-      totalMinutes += (prep + cook);
+      const times = item.timesCooked || 1;
+      totalMinutes += (prep + cook) * times;
       ratingSum += (item.rating || 5);
+      totalCookSessions += times;
 
       const dishTitle = item.recipeSnapshot?.title || item.recipe?.title || 'Món ăn';
-      titleCounts[dishTitle] = (titleCounts[dishTitle] || 0) + 1;
+      titleCounts[dishTitle] = (titleCounts[dishTitle] || 0) + times;
     });
 
     const averageRating = totalCooked > 0 ? (ratingSum / totalCooked).toFixed(1) : '5.0';
@@ -128,11 +163,11 @@ const getCookingHistory = async (req, res, next) => {
 
     // Chef badge level
     let chefBadge = 'Tập sự bếp núc 🍳';
-    if (totalCooked >= 20) {
+    if (totalCooked >= 20 || totalCookSessions >= 30) {
       chefBadge = 'Bậc thầy ẩm thực 👑';
-    } else if (totalCooked >= 10) {
+    } else if (totalCooked >= 10 || totalCookSessions >= 15) {
       chefBadge = 'Bếp trưởng Vét Tủ 🌟';
-    } else if (totalCooked >= 5) {
+    } else if (totalCooked >= 5 || totalCookSessions >= 8) {
       chefBadge = 'Đầu bếp tài hoa 👨‍🍳';
     } else if (totalCooked >= 1) {
       chefBadge = 'Đầu bếp tích cực 🥦';
@@ -140,10 +175,11 @@ const getCookingHistory = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      count: historyItems.length,
-      data: historyItems,
+      count: deduplicatedItems.length,
+      data: deduplicatedItems,
       stats: {
         totalCooked,
+        totalCookSessions,
         totalMinutes,
         averageRating: Number(averageRating),
         mostCookedTitle: mostCookedTitle || 'Chưa có',

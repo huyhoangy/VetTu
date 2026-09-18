@@ -36,6 +36,10 @@ const cookingHistorySchema = new mongoose.Schema(
       type: Number,
       default: 2,
     },
+    timesCooked: {
+      type: Number,
+      default: 1,
+    },
     cookedAt: {
       type: Date,
       default: Date.now,

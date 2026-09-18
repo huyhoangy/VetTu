@@ -339,14 +339,23 @@ const CookingHistoryScreen = ({ navigation }) => {
                         <Text style={styles.cardDate}>{formatDate(item.cookedAt)}</Text>
                       </View>
 
-                      <TouchableOpacity
-                        style={styles.deleteBtn}
-                        onPress={() => handleDeleteEntry(item)}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="trash-outline" size={16} color="#9CA3AF" />
-                      </TouchableOpacity>
+                      <View style={styles.cardHeaderRight}>
+                        {(item.timesCooked || 1) > 1 && (
+                          <View style={styles.timesCookedBadge}>
+                            <Ionicons name="flame" size={12} color="#EA580C" />
+                            <Text style={styles.timesCookedText}>Đã nấu {item.timesCooked} lần</Text>
+                          </View>
+                        )}
+
+                        <TouchableOpacity
+                          style={styles.deleteBtn}
+                          onPress={() => handleDeleteEntry(item)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#9CA3AF" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
                     {/* Main Recipe Info Row */}
@@ -725,6 +734,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: Colors.textSecondary,
+  },
+  cardHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  timesCookedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+  },
+  timesCookedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EA580C',
   },
   deleteBtn: {
     padding: 2,
