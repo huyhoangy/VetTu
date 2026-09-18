@@ -17,8 +17,8 @@ export const recipeApi = {
   },
 
   // POST /api/recipes/:id/favorite
-  toggleFavorite: (id, userId) => {
-    return axiosClient.post(`/recipes/${id}/favorite`, { userId });
+  toggleFavorite: (id, userId, title = '') => {
+    return axiosClient.post(`/recipes/${id}/favorite`, { userId, title });
   },
 
   // GET /api/recipes/favorites

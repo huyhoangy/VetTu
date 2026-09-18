@@ -139,6 +139,8 @@ const seedRecipes = async (req, res, next) => {
   }
 };
 
+const mongoose = require('mongoose');
+
 // @desc    Toggle favorite/bookmark recipe for user
 // @route   POST /api/recipes/:id/favorite
 // @access  Public / Private
@@ -146,6 +148,7 @@ const toggleFavoriteRecipe = async (req, res, next) => {
   try {
     const { id } = req.params;
     const currentUserId = req.user?._id || req.user?.id || req.body?.userId;
+    const recipeTitle = req.body?.title;
 
     if (!currentUserId) {
       return res.status(400).json({ success: false, message: 'Thiếu thông tin người dùng' });
@@ -156,31 +159,46 @@ const toggleFavoriteRecipe = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
     }
 
-    const recipe = await Recipe.findById(id);
+    let recipe = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      recipe = await Recipe.findById(id);
+    }
+
+    // Fallback search by title if ID is stale from past seeds
+    if (!recipe && recipeTitle) {
+      recipe = await Recipe.findOne({ title: recipeTitle });
+    }
+
     if (!recipe) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy món ăn' });
     }
 
+    const targetRecipeId = recipe._id.toString();
     if (!user.favorites) user.favorites = [];
 
-    const isFav = user.favorites.some((favId) => favId.toString() === id.toString());
+    const isFav = user.favorites.some((favId) => favId.toString() === targetRecipeId);
+
+    let updatedFavorites;
+    let newLikesCount = recipe.likesCount || 0;
 
     if (isFav) {
-      user.favorites = user.favorites.filter((favId) => favId.toString() !== id.toString());
-      if (recipe.likesCount > 0) recipe.likesCount -= 1;
+      updatedFavorites = user.favorites.filter((favId) => favId.toString() !== targetRecipeId);
+      newLikesCount = Math.max(0, newLikesCount - 1);
     } else {
-      user.favorites.push(id);
-      recipe.likesCount = (recipe.likesCount || 0) + 1;
+      updatedFavorites = [...user.favorites, recipe._id];
+      newLikesCount = newLikesCount + 1;
     }
 
-    await user.save();
-    await recipe.save();
+    // Atomic updates
+    await User.findByIdAndUpdate(currentUserId, { favorites: updatedFavorites });
+    await Recipe.findByIdAndUpdate(recipe._id, { likesCount: newLikesCount });
 
     return res.status(200).json({
       success: true,
       isFavorite: !isFav,
-      likesCount: recipe.likesCount,
-      favoritesCount: user.favorites.length,
+      recipeId: recipe._id,
+      likesCount: newLikesCount,
+      favoritesCount: updatedFavorites.length,
       message: !isFav ? 'Đã lưu món ăn vào danh sách yêu thích' : 'Đã bỏ lưu món ăn khỏi yêu thích',
     });
   } catch (error) {

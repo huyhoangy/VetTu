@@ -87,11 +87,12 @@ const RecipeDetailScreen = ({ route, navigation }) => {
     setTogglingFav(true);
 
     try {
-      const res = await recipeApi.toggleFavorite(targetId, currentUserId);
+      const res = await recipeApi.toggleFavorite(targetId, currentUserId, recipe?.title);
       if (res.success) {
         if (recipe) {
           setRecipe((prev) => ({
             ...prev,
+            _id: res.recipeId || prev._id,
             likesCount: res.likesCount !== undefined ? res.likesCount : prev.likesCount,
           }));
         }

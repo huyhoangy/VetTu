@@ -41,12 +41,13 @@ const RecipeResultsScreen = ({ route, navigation }) => {
     }, [fetchFavorites])
   );
 
-  const handleToggleFavorite = async (recipeId) => {
+  const handleToggleFavorite = async (recipeItem) => {
     if (!currentUserId) {
       Alert.alert('Thông báo', 'Vui lòng đăng nhập để lưu món ăn yêu thích');
       return;
     }
 
+    const recipeId = recipeItem._id;
     const isFav = favoriteIds.includes(recipeId);
     // Optimistic toggle
     setFavoriteIds((prev) =>
@@ -54,7 +55,13 @@ const RecipeResultsScreen = ({ route, navigation }) => {
     );
 
     try {
-      await recipeApi.toggleFavorite(recipeId, currentUserId);
+      const res = await recipeApi.toggleFavorite(recipeId, currentUserId, recipeItem.title);
+      if (res.success && res.recipeId && res.recipeId !== recipeId) {
+        setFavoriteIds((prev) => [
+          ...prev.filter((id) => id !== recipeId),
+          res.recipeId,
+        ]);
+      }
     } catch (err) {
       // Revert on error
       fetchFavorites();
@@ -115,7 +122,7 @@ const RecipeResultsScreen = ({ route, navigation }) => {
           {/* Quick Heart Toggle Button */}
           <TouchableOpacity
             style={styles.cardHeartBtn}
-            onPress={() => handleToggleFavorite(item._id)}
+            onPress={() => handleToggleFavorite(item)}
             activeOpacity={0.8}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
