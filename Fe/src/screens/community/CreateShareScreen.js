@@ -42,6 +42,7 @@ const CreateShareScreen = ({ navigation }) => {
   const [contactPhone, setContactPhone] = useState('');
   const [contactNote, setContactNote] = useState('Có thể qua lấy vào buổi tối sau 18h');
   const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageBase64, setSelectedImageBase64] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploadingText, setUploadingText] = useState('Đăng bài chia sẻ');
 
@@ -87,11 +88,15 @@ const CreateShareScreen = ({ navigation }) => {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.8,
+      quality: 0.7,
+      base64: true,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setSelectedImage(result.assets[0].uri);
+      if (result.assets[0].base64) {
+        setSelectedImageBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      }
     }
   };
 
@@ -110,17 +115,21 @@ const CreateShareScreen = ({ navigation }) => {
       setLoading(true);
       let finalImageUrl = selectedImage;
 
-      // Upload directly to Cloudinary if a local device image was picked
-      if (selectedImage && !selectedImage.startsWith('http')) {
+      // Upload directly to Cloudinary using Base64 JSON (100% reliable across all devices)
+      if (selectedImageBase64 || (selectedImage && selectedImage.startsWith('data:image/'))) {
         setUploadingText('Đang tải ảnh lên Cloudinary ☁️...');
         try {
-          const cloudUrl = await uploadImageToCloudinary(selectedImage);
+          const payload = selectedImageBase64 || selectedImage;
+          const cloudUrl = await uploadImageToCloudinary(payload);
           if (cloudUrl) {
             finalImageUrl = cloudUrl;
           }
         } catch (uploadErr) {
-          console.warn('Cloudinary upload warning:', uploadErr.message);
-          // If upload fails, fall back to default image or local image
+          console.error('Cloudinary upload failed:', uploadErr.message);
+          setLoading(false);
+          setUploadingText('Đăng bài chia sẻ');
+          Alert.alert('Lỗi tải ảnh Cloudinary', uploadErr.message || 'Không thể tải ảnh lên');
+          return;
         }
       }
 
