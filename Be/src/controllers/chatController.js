@@ -149,11 +149,70 @@ exports.getUserConversations = async (req, res) => {
   }
 };
 
+// GET /api/chat/conversations/:id
+exports.getConversationById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const conversation = await Conversation.findById(id)
+      .populate('shareId', 'title images quantity status addressName type')
+      .populate('participants', 'name avatar rating email');
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy cuộc hội thoại',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: conversation,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi tải thông tin hội thoại',
+      error: error.message,
+    });
+  }
+};
+
+// DELETE /api/chat/conversations/:id
+// Delete a conversation and its messages
+exports.deleteConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await Message.deleteMany({ conversationId: id });
+    const deleted = await Conversation.findByIdAndDelete(id);
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy đoạn hội thoại để xóa',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Đã xóa lịch sử đoạn chat thành công',
+    });
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể xóa đoạn hội thoại',
+      error: error.message,
+    });
+  }
+};
+
 // GET /api/chat/conversations/:id/messages
 exports.getConversationMessages = async (req, res) => {
   try {
     const { id } = req.params;
 
+    const conversation = await Conversation.findById(id).select('status shareId');
     const messages = await Message.find({ conversationId: id })
       .populate('sender', 'name avatar')
       .sort({ createdAt: 1 });
@@ -161,6 +220,7 @@ exports.getConversationMessages = async (req, res) => {
     res.status(200).json({
       success: true,
       data: messages,
+      conversationStatus: conversation?.status || 'ACTIVE',
     });
   } catch (error) {
     res.status(500).json({

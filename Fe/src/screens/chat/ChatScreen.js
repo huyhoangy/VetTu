@@ -45,6 +45,9 @@ const ChatScreen = ({ navigation, route }) => {
       const res = await chatApi.getMessages(conversationId);
       if (res.success && res.data) {
         setMessages(res.data);
+        if (res.conversationStatus) {
+          setConversationStatus(res.conversationStatus);
+        }
       }
     } catch (error) {
       // Fallback
@@ -55,10 +58,10 @@ const ChatScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchMessages();
-    // Poll for new messages every 3 seconds
+    // Poll for new messages and status updates every 2.5 seconds
     const interval = setInterval(() => {
       fetchMessages(true);
-    }, 3000);
+    }, 2500);
     return () => clearInterval(interval);
   }, [conversationId]);
 
@@ -87,7 +90,7 @@ const ChatScreen = ({ navigation, route }) => {
   const handleConfirmReceived = () => {
     Alert.alert(
       'Xác nhận đã nhận thực phẩm 🎉',
-      'Bạn đã nhận được món ăn này từ hàng xóm và muốn đánh dấu hoàn tất giao dịch?',
+      'Bạn đã nhận được món ăn này và muốn đánh dấu hoàn tất giao dịch? Trạng thái sẽ được cập nhật đồng bộ cho cả hai bên.',
       [
         { text: 'Chưa', style: 'cancel' },
         {
@@ -102,6 +105,31 @@ const ChatScreen = ({ navigation, route }) => {
               }
             } catch (err) {
               Alert.alert('Lỗi', 'Không thể cập nhật trạng thái');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteConversation = () => {
+    Alert.alert(
+      'Xóa đoạn chat 🗑️',
+      'Bạn có chắc chắn muốn xóa toàn bộ lịch sử tin nhắn của cuộc trò chuyện này không?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa vĩnh viễn',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await chatApi.deleteConversation(conversationId);
+              if (res.success) {
+                Alert.alert('Đã xóa', 'Lịch sử đoạn chat đã được xóa thành công.');
+                navigation.goBack();
+              }
+            } catch (error) {
+              Alert.alert('Lỗi', 'Không thể xóa cuộc trò chuyện lúc này');
             }
           },
         },
@@ -144,16 +172,32 @@ const ChatScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {conversationStatus !== 'COMPLETED' && (
+        {/* Action buttons: Completed / Received Status & Delete */}
+        <View style={styles.headerRightActions}>
+          {conversationStatus === 'COMPLETED' ? (
+            <View style={styles.completedHeaderBadge}>
+              <Ionicons name="checkmark-done-circle" size={15} color="#059669" />
+              <Text style={styles.completedHeaderBadgeText}>Đã nhận</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.completeBtn}
+              onPress={handleConfirmReceived}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="checkmark-circle-outline" size={15} color="#059669" />
+              <Text style={styles.completeBtnText}>Đã nhận</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
-            style={styles.completeBtn}
-            onPress={handleConfirmReceived}
-            activeOpacity={0.8}
+            style={styles.deleteHeaderBtn}
+            onPress={handleDeleteConversation}
+            activeOpacity={0.7}
           >
-            <Ionicons name="checkmark-circle" size={16} color="#059669" />
-            <Text style={styles.completeBtnText}>Đã nhận</Text>
+            <Ionicons name="trash-outline" size={18} color="#EF4444" />
           </TouchableOpacity>
-        )}
+        </View>
       </View>
 
       {/* Item Summary Card Pin */}
@@ -364,6 +408,11 @@ const styles = StyleSheet.create({
     color: '#059669',
     fontWeight: '600',
   },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   completeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -379,6 +428,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#065F46',
+  },
+  completedHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  completedHeaderBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  deleteHeaderBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
   },
   itemPinCard: {
     flexDirection: 'row',

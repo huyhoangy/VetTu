@@ -58,10 +58,13 @@ const ShareDetailScreen = ({ navigation, route }) => {
 
       setChatStarting(false);
       if (res.success && res.data) {
+        const partner = res.data.participants?.find((p) => (p._id || p.id) !== myId) ||
+          (typeof share.createdBy === 'object' ? share.createdBy : { name: 'Hàng xóm', avatar: 'https://cdn-icons-png.flaticon.com/512/847/847969.png' });
+
         navigation.navigate('Chat', {
           conversationId: res.data._id,
-          shareItem: share,
-          donorUser: typeof share.createdBy === 'object' ? share.createdBy : { name: 'Hàng xóm', avatar: 'https://cdn-icons-png.flaticon.com/512/847/847969.png' },
+          shareItem: res.data.shareId || share,
+          donorUser: partner,
         });
       }
     } catch (err) {

@@ -8,8 +8,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
@@ -24,9 +26,9 @@ const ConversationsListScreen = ({ navigation }) => {
 
   const currentUserId = user?._id || user?.id;
 
-  const fetchConversations = useCallback(async () => {
+  const fetchConversations = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await chatApi.getUserConversations(currentUserId);
       if (res.success && res.data) {
         setConversations(res.data);
@@ -34,10 +36,16 @@ const ConversationsListScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
       setRefreshing(false);
     }
   }, [currentUserId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchConversations(true);
+    }, [fetchConversations])
+  );
 
   useEffect(() => {
     fetchConversations();
@@ -45,7 +53,31 @@ const ConversationsListScreen = ({ navigation }) => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchConversations();
+    fetchConversations(true);
+  };
+
+  const handleDeleteConversation = (convId, partnerName) => {
+    Alert.alert(
+      'Xóa đoạn chat 🗑️',
+      `Bạn có chắc chắn muốn xóa toàn bộ lịch sử trò chuyện với "${partnerName || 'hàng xóm'}" không?`,
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa vĩnh viễn',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await chatApi.deleteConversation(convId);
+              if (res.success) {
+                setConversations((prev) => prev.filter((c) => c._id !== convId));
+              }
+            } catch (error) {
+              Alert.alert('Lỗi', 'Không thể xóa đoạn hội thoại');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -114,6 +146,7 @@ const ConversationsListScreen = ({ navigation }) => {
                       donorUser: partner,
                     })
                   }
+                  onLongPress={() => handleDeleteConversation(conv._id, partner?.name)}
                 >
                   {/* Item / Partner Photo */}
                   <View style={styles.avatarWrapper}>
@@ -158,15 +191,25 @@ const ConversationsListScreen = ({ navigation }) => {
                     </Text>
                   </View>
 
-                  {/* Status indicator */}
-                  <View style={styles.rightArrow}>
+                  {/* Status & Delete action */}
+                  <View style={styles.convActionsRight}>
                     {conv.status === 'COMPLETED' ? (
                       <View style={styles.doneTag}>
-                        <Text style={styles.doneTagText}>Hoàn tất</Text>
+                        <Ionicons name="checkmark-done" size={12} color="#065F46" />
+                        <Text style={styles.doneTagText}>Đã nhận</Text>
                       </View>
                     ) : (
                       <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
                     )}
+
+                    <TouchableOpacity
+                      style={styles.deleteBtnMini}
+                      onPress={() => handleDeleteConversation(conv._id, partner?.name)}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
               );
@@ -288,14 +331,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#4B5563',
   },
-  rightArrow: {
+  convActionsRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     marginLeft: 8,
+    gap: 8,
+  },
+  deleteBtnMini: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   doneTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 8,
+    gap: 3,
   },
   doneTagText: {
     fontSize: 10,

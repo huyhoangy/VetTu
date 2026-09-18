@@ -17,6 +17,16 @@ export const chatApi = {
     return await axiosClient.get(url);
   },
 
+  // GET /api/chat/conversations/:id
+  getConversationById: async (conversationId) => {
+    return await axiosClient.get(`/chat/conversations/${conversationId}`);
+  },
+
+  // DELETE /api/chat/conversations/:id
+  deleteConversation: async (conversationId) => {
+    return await axiosClient.delete(`/chat/conversations/${conversationId}`);
+  },
+
   // GET /api/chat/conversations/:id/messages
   getMessages: async (conversationId) => {
     return await axiosClient.get(`/chat/conversations/${conversationId}/messages`);
