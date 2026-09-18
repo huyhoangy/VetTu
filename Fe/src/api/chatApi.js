@@ -2,11 +2,12 @@ import axiosClient from './axiosClient';
 
 export const chatApi = {
   // POST /api/chat/conversation (Get or create conversation for a share)
-  getOrCreateConversation: async (shareId, donorId, initialMessage) => {
+  getOrCreateConversation: async (shareId, donorId, initialMessage, userId) => {
     return await axiosClient.post('/chat/conversation', {
       shareId,
       donorId,
       initialMessage,
+      userId,
     });
   },
 

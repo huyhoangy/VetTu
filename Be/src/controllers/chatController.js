@@ -7,20 +7,68 @@ const User = require('../models/User');
 // Find or create conversation for a food share between current user and donor
 exports.getOrCreateConversation = async (req, res) => {
   try {
-    const { shareId, donorId, initialMessage } = req.body;
-    const currentUserId = req.user?._id || req.body.userId;
+    const { shareId, donorId, initialMessage, userId } = req.body;
 
-    if (!shareId || !donorId) {
+    if (!shareId) {
       return res.status(400).json({
         success: false,
-        message: 'Thiếu thông tin bài chia sẻ hoặc người nhận',
+        message: 'Thiếu thông tin bài chia sẻ',
       });
     }
 
-    // Check if conversation already exists
+    // 1. Resolve current user ID
+    let currentUserId = req.user?._id || userId;
+    if (!currentUserId) {
+      let firstUser = await User.findOne();
+      if (!firstUser) {
+        firstUser = await User.create({
+          name: 'Tôi (Người nhận)',
+          email: 'receiver@vettu.app',
+          avatar: 'https://cdn-icons-png.flaticon.com/512/847/847969.png',
+        });
+      }
+      currentUserId = firstUser._id;
+    }
+
+    // 2. Resolve donor user ID
+    let resolvedDonorId = typeof donorId === 'object' && donorId?._id ? donorId._id : donorId;
+    if (!resolvedDonorId) {
+      // Find share to get createdBy
+      const shareDoc = await FoodShare.findById(shareId);
+      if (shareDoc && shareDoc.createdBy) {
+        resolvedDonorId = shareDoc.createdBy;
+      }
+    }
+
+    if (!resolvedDonorId) {
+      let donor = await User.findOne({ _id: { $ne: currentUserId } });
+      if (!donor) {
+        donor = await User.create({
+          name: 'Chị Mai (Hàng xóm)',
+          email: 'donor@vettu.app',
+          avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400',
+        });
+      }
+      resolvedDonorId = donor._id;
+    }
+
+    // If user is trying to message their own post, assign demo neighbor partner
+    if (resolvedDonorId.toString() === currentUserId.toString()) {
+      let partner = await User.findOne({ _id: { $ne: currentUserId } });
+      if (!partner) {
+        partner = await User.create({
+          name: 'Chị Mai (Hàng xóm)',
+          email: 'neighbor_demo@vettu.app',
+          avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400',
+        });
+      }
+      resolvedDonorId = partner._id;
+    }
+
+    // 3. Check if conversation already exists
     let conversation = await Conversation.findOne({
       shareId,
-      participants: { $all: [currentUserId, donorId] },
+      participants: { $all: [currentUserId, resolvedDonorId] },
     })
       .populate('shareId', 'title images quantity status addressName type')
       .populate('participants', 'name avatar rating email');
@@ -28,7 +76,7 @@ exports.getOrCreateConversation = async (req, res) => {
     if (!conversation) {
       conversation = await Conversation.create({
         shareId,
-        participants: [currentUserId, donorId],
+        participants: [currentUserId, resolvedDonorId],
         lastMessage: {
           text: initialMessage || 'Chào bạn, mình muốn xin món này được không?',
           sender: currentUserId,
@@ -47,18 +95,21 @@ exports.getOrCreateConversation = async (req, res) => {
       // Automatically simulate a friendly donor reply for instant interactive demo
       setTimeout(async () => {
         try {
+          const donorReply = 'Chào bạn! Món này mình vẫn còn nhé. Bạn có thể qua lấy trước 20h tối nay được không?';
           await Message.create({
             conversationId: conversation._id,
-            sender: donorId,
-            text: 'Chào bạn! Món này mình vẫn còn nhé. Bạn có thể qua lấy trước 20h tối nay được không?',
+            sender: resolvedDonorId,
+            text: donorReply,
           });
           await Conversation.findByIdAndUpdate(conversation._id, {
-            'lastMessage.text': 'Chào bạn! Món này mình vẫn còn nhé. Bạn có thể qua lấy trước 20h tối nay được không?',
-            'lastMessage.sender': donorId,
+            'lastMessage.text': donorReply,
+            'lastMessage.sender': resolvedDonorId,
             'lastMessage.createdAt': new Date(),
           });
-        } catch (e) {}
-      }, 1200);
+        } catch (e) {
+          console.log('Auto reply error:', e.message);
+        }
+      }, 1000);
 
       conversation = await Conversation.findById(conversation._id)
         .populate('shareId', 'title images quantity status addressName type')
@@ -90,10 +141,18 @@ exports.getUserConversations = async (req, res) => {
       query = { participants: currentUserId };
     }
 
-    const conversations = await Conversation.find(query)
+    let conversations = await Conversation.find(query)
       .populate('shareId', 'title images quantity status addressName type')
       .populate('participants', 'name avatar rating email')
       .sort({ updatedAt: -1 });
+
+    // Fallback: if no conversations for this user, return all recent conversations
+    if (conversations.length === 0) {
+      conversations = await Conversation.find()
+        .populate('shareId', 'title images quantity status addressName type')
+        .populate('participants', 'name avatar rating email')
+        .sort({ updatedAt: -1 });
+    }
 
     res.status(200).json({
       success: true,
@@ -136,7 +195,12 @@ exports.sendMessage = async (req, res) => {
   try {
     const { id } = req.params;
     const { text, senderId } = req.body;
-    const currentUserId = req.user?._id || senderId;
+    let currentUserId = req.user?._id || senderId;
+
+    if (!currentUserId) {
+      const anyUser = await User.findOne();
+      currentUserId = anyUser?._id;
+    }
 
     if (!text || !text.trim()) {
       return res.status(400).json({

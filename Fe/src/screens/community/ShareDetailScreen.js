@@ -47,10 +47,13 @@ const ShareDetailScreen = ({ navigation, route }) => {
     try {
       setChatStarting(true);
       const donorId = share?.createdBy?._id || share?.createdBy;
+      const myId = user?._id || user?.id;
+
       const res = await chatApi.getOrCreateConversation(
         share._id,
         donorId,
-        `Chào bạn! Mình thấy bạn đang chia sẻ món "${share.title}" (${share.quantity}), mình có thể xin nhận được không ạ?`
+        `Chào bạn! Mình thấy bạn đang chia sẻ món "${share.title}" (${share.quantity}), mình có thể xin nhận được không ạ?`,
+        myId
       );
 
       setChatStarting(false);
@@ -58,12 +61,12 @@ const ShareDetailScreen = ({ navigation, route }) => {
         navigation.navigate('Chat', {
           conversationId: res.data._id,
           shareItem: share,
-          donorUser: share.createdBy,
+          donorUser: typeof share.createdBy === 'object' ? share.createdBy : { name: 'Hàng xóm', avatar: 'https://cdn-icons-png.flaticon.com/512/847/847969.png' },
         });
       }
     } catch (err) {
       setChatStarting(false);
-      Alert.alert('Lỗi', 'Không thể bắt đầu cuộc trò chuyện');
+      Alert.alert('Lỗi', 'Không thể bắt đầu cuộc trò chuyện. Vui lòng thử lại!');
     }
   };
 
