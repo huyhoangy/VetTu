@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { Colors } from '../../constants/colors';
@@ -90,9 +91,9 @@ const CommunityScreen = ({ navigation, route }) => {
     }
   };
 
-  const fetchShares = useCallback(async () => {
+  const fetchShares = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await shareApi.getNearbyShares({
         lng: userLocation.lng,
         lat: userLocation.lat,
@@ -101,16 +102,24 @@ const CommunityScreen = ({ navigation, route }) => {
         search: searchQuery,
       });
 
-      if (res.success) {
-        setShares(res.data);
+      if (res.success && res.data) {
+        // Strictly filter out any items that are already COMPLETED
+        const availableOnly = res.data.filter((item) => item.status !== 'COMPLETED');
+        setShares(availableOnly);
       }
     } catch (error) {
       console.error('Error fetching shares:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
       setRefreshing(false);
     }
   }, [userLocation, selectedCategory, selectedType, searchQuery]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchShares(true);
+    }, [fetchShares])
+  );
 
   useEffect(() => {
     getCurrentLocation();
@@ -122,7 +131,7 @@ const CommunityScreen = ({ navigation, route }) => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchShares();
+    fetchShares(true);
   };
 
   return (

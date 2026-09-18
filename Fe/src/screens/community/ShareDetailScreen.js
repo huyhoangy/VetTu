@@ -152,9 +152,26 @@ const ShareDetailScreen = ({ navigation, route }) => {
               </Text>
             </View>
 
-            <View style={styles.statusBadge}>
-              <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Đang còn sẵn</Text>
+            <View
+              style={[
+                styles.statusBadge,
+                share.status === 'COMPLETED' && { backgroundColor: '#F3F4F6' },
+              ]}
+            >
+              <View
+                style={[
+                  styles.statusDot,
+                  share.status === 'COMPLETED' && { backgroundColor: '#9CA3AF' },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.statusText,
+                  share.status === 'COMPLETED' && { color: '#6B7280' },
+                ]}
+              >
+                {share.status === 'COMPLETED' ? 'Đã có người nhận' : 'Đang còn sẵn'}
+              </Text>
             </View>
           </View>
 
@@ -234,12 +251,21 @@ const ShareDetailScreen = ({ navigation, route }) => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.claimMainBtn}
+          style={[
+            styles.claimMainBtn,
+            share.status === 'COMPLETED' && { backgroundColor: '#9CA3AF' },
+          ]}
           onPress={handleContactDonor}
           activeOpacity={0.85}
         >
-          <Ionicons name="chatbubble-ellipses" size={20} color="#FFFFFF" />
-          <Text style={styles.claimMainText}>Nhắn tin nhận món này</Text>
+          <Ionicons
+            name={share.status === 'COMPLETED' ? 'checkmark-circle' : 'chatbubble-ellipses'}
+            size={20}
+            color="#FFFFFF"
+          />
+          <Text style={styles.claimMainText}>
+            {share.status === 'COMPLETED' ? 'Món này đã hoàn tất nhận' : 'Nhắn tin nhận món này'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
