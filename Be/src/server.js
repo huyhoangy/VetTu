@@ -26,6 +26,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/recipes', require('./routes/recipeRoutes'));
 app.use('/api/shares', require('./routes/shareRoutes'));
+app.use('/api/chat', require('./routes/chatRoutes'));
 
 // Error handling middleware
 app.use(errorHandler);

@@ -14,13 +14,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import shareApi from '../../api/shareApi';
+import chatApi from '../../api/chatApi';
+import { useAuth } from '../../context/AuthContext';
 
 const ShareDetailScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { shareId } = route.params;
 
   const [share, setShare] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [chatStarting, setChatStarting] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -39,23 +43,28 @@ const ShareDetailScreen = ({ navigation, route }) => {
     fetchDetail();
   }, [shareId]);
 
-  const handleContactDonor = () => {
-    Alert.alert(
-      'Nhận thực phẩm 🤝',
-      `Bạn muốn kết nối với ${share?.createdBy?.name || 'người tặng'} để nhận món "${share?.title}"?`,
-      [
-        { text: 'Để sau', style: 'cancel' },
-        {
-          text: 'Gửi yêu cầu nhận đồ',
-          onPress: () => {
-            Alert.alert(
-              'Đã gửi yêu cầu! 🎉',
-              'Người tặng đã nhận được lời nhắn của bạn và sẽ phản hồi sớm để hẹn giờ lấy đồ.'
-            );
-          },
-        },
-      ]
-    );
+  const handleContactDonor = async () => {
+    try {
+      setChatStarting(true);
+      const donorId = share?.createdBy?._id || share?.createdBy;
+      const res = await chatApi.getOrCreateConversation(
+        share._id,
+        donorId,
+        `Chào bạn! Mình thấy bạn đang chia sẻ món "${share.title}" (${share.quantity}), mình có thể xin nhận được không ạ?`
+      );
+
+      setChatStarting(false);
+      if (res.success && res.data) {
+        navigation.navigate('Chat', {
+          conversationId: res.data._id,
+          shareItem: share,
+          donorUser: share.createdBy,
+        });
+      }
+    } catch (err) {
+      setChatStarting(false);
+      Alert.alert('Lỗi', 'Không thể bắt đầu cuộc trò chuyện');
+    }
   };
 
   const handleCall = () => {

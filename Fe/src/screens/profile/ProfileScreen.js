@@ -36,6 +36,7 @@ const ProfileScreen = ({ navigation }) => {
     {
       title: 'Hoạt động của bạn',
       items: [
+        { id: 'messages', title: 'Tin nhắn & Lịch sử nhận món', icon: 'chatbubble-ellipses-outline', badge: 'Mới', color: '#3B82F6' },
         { id: 'favorites', title: 'Món ăn yêu thích', icon: 'heart-outline', badge: '12', color: '#EF4444' },
         { id: 'cooked', title: 'Lịch sử nấu ăn', icon: 'restaurant-outline', badge: '8', color: Colors.primary },
         { id: 'my_shares', title: 'Thực phẩm tôi đã chia sẻ', icon: 'gift-outline', badge: '3', color: '#10B981' },
@@ -120,7 +121,11 @@ const ProfileScreen = ({ navigation }) => {
                   ]}
                   activeOpacity={0.7}
                   onPress={() => {
-                    Alert.alert(item.title, 'Tính năng đang phát triển trong các bản cập nhật tới!');
+                    if (item.id === 'messages') {
+                      navigation.navigate('ConversationsList');
+                    } else {
+                      Alert.alert(item.title, 'Tính năng đang phát triển trong các bản cập nhật tới!');
+                    }
                   }}
                 >
                   <View style={[styles.menuIconBox, { backgroundColor: `${item.color}15` }]}>
