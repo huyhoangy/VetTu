@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import chatApi from '../../api/chatApi';
+import notificationApi from '../../api/notificationApi';
 
 const QUICK_ACTIONS = [
   '⏰ Hẹn bạn 18h tối nay nhé',
@@ -58,6 +59,10 @@ const ChatScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchMessages();
+    // Mark all notifications for this conversation as read
+    if (conversationId && currentUserId) {
+      notificationApi.markReadByConversation(conversationId, currentUserId).catch(() => {});
+    }
     // Poll for new messages and status updates every 2.5 seconds
     const interval = setInterval(() => {
       fetchMessages(true);

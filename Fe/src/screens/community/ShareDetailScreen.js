@@ -43,12 +43,20 @@ const ShareDetailScreen = ({ navigation, route }) => {
     fetchDetail();
   }, [shareId]);
 
+  const donorId = share?.createdBy?._id || share?.createdBy;
+  const myId = user?._id || user?.id;
+  const isMyPost = Boolean(
+    donorId && myId && donorId.toString() === myId.toString()
+  );
+
   const handleContactDonor = async () => {
+    if (isMyPost) {
+      Alert.alert('Thông báo', 'Bạn là người đăng chia sẻ món này nên không thể tự nhắn tin cho chính mình!');
+      return;
+    }
+
     try {
       setChatStarting(true);
-      const donorId = share?.createdBy?._id || share?.createdBy;
-      const myId = user?._id || user?.id;
-
       const res = await chatApi.getOrCreateConversation(
         share._id,
         donorId,
@@ -66,14 +74,20 @@ const ShareDetailScreen = ({ navigation, route }) => {
           shareItem: res.data.shareId || share,
           donorUser: partner,
         });
+      } else {
+        Alert.alert('Thông báo', res.message || 'Không thể bắt đầu cuộc trò chuyện');
       }
     } catch (err) {
       setChatStarting(false);
-      Alert.alert('Lỗi', 'Không thể bắt đầu cuộc trò chuyện. Vui lòng thử lại!');
+      Alert.alert('Lỗi', err.response?.data?.message || 'Không thể bắt đầu cuộc trò chuyện. Vui lòng thử lại!');
     }
   };
 
   const handleCall = () => {
+    if (isMyPost) {
+      Alert.alert('Thông báo', 'Đây là số liên hệ của chính bạn');
+      return;
+    }
     if (share?.contactPhone) {
       Linking.openURL(`tel:${share.contactPhone}`);
     } else {
@@ -246,25 +260,41 @@ const ShareDetailScreen = ({ navigation, route }) => {
           { paddingBottom: Math.max(insets.bottom, 16) + 10 },
         ]}
       >
-        <TouchableOpacity style={styles.callBtn} onPress={handleCall} activeOpacity={0.8}>
-          <Ionicons name="call-outline" size={22} color={Colors.primary} />
-        </TouchableOpacity>
+        {!isMyPost && (
+          <TouchableOpacity style={styles.callBtn} onPress={handleCall} activeOpacity={0.8}>
+            <Ionicons name="call-outline" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={[
             styles.claimMainBtn,
-            share.status === 'COMPLETED' && { backgroundColor: '#9CA3AF' },
+            isMyPost
+              ? styles.myPostBtn
+              : share.status === 'COMPLETED'
+              ? { backgroundColor: '#9CA3AF' }
+              : null,
           ]}
           onPress={handleContactDonor}
-          activeOpacity={0.85}
+          activeOpacity={isMyPost ? 0.9 : 0.85}
         >
           <Ionicons
-            name={share.status === 'COMPLETED' ? 'checkmark-circle' : 'chatbubble-ellipses'}
+            name={
+              isMyPost
+                ? 'person-circle'
+                : share.status === 'COMPLETED'
+                ? 'checkmark-circle'
+                : 'chatbubble-ellipses'
+            }
             size={20}
             color="#FFFFFF"
           />
           <Text style={styles.claimMainText}>
-            {share.status === 'COMPLETED' ? 'Món này đã hoàn tất nhận' : 'Nhắn tin nhận món này'}
+            {isMyPost
+              ? 'Món do chính bạn chia sẻ'
+              : share.status === 'COMPLETED'
+              ? 'Món này đã hoàn tất nhận'
+              : 'Nhắn tin nhận món này'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -529,6 +559,9 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 16,
     gap: 8,
+  },
+  myPostBtn: {
+    backgroundColor: '#6B7280',
   },
   claimMainText: {
     color: '#FFFFFF',

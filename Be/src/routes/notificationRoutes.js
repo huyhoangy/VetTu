@@ -11,6 +11,9 @@ router.get('/unread-count', notificationController.getUnreadCount);
 // Mark all as read
 router.put('/read-all', notificationController.markAllAsRead);
 
+// Mark all notifications in a conversation as read
+router.put('/read-by-conversation', notificationController.markReadByConversation);
+
 // Mark single notification as read
 router.put('/:id/read', notificationController.markAsRead);
 

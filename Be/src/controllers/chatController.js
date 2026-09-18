@@ -54,17 +54,12 @@ exports.getOrCreateConversation = async (req, res) => {
       resolvedDonorId = donor._id;
     }
 
-    // If user is trying to message their own post, assign demo neighbor partner
+    // If user is trying to message their own post, disallow it
     if (resolvedDonorId.toString() === currentUserId.toString()) {
-      let partner = await User.findOne({ _id: { $ne: currentUserId } });
-      if (!partner) {
-        partner = await User.create({
-          name: 'Chị Mai (Hàng xóm)',
-          email: 'neighbor_demo@vettu.app',
-          avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400',
-        });
-      }
-      resolvedDonorId = partner._id;
+      return res.status(400).json({
+        success: false,
+        message: 'Bạn không thể tự nhắn tin cho chính mình với món do bạn đăng!',
+      });
     }
 
     // 3. Check if conversation already exists
@@ -256,6 +251,22 @@ exports.getConversationMessages = async (req, res) => {
 
     const conversation = await Conversation.findById(id).select('status shareId clearedHistory');
     
+    // Automatically mark all notifications for this conversation as read
+    if (currentUserId) {
+      try {
+        await Notification.updateMany(
+          {
+            recipient: currentUserId,
+            'data.conversationId': id,
+            isRead: false,
+          },
+          { isRead: true }
+        );
+      } catch (notifErr) {
+        console.log('Error marking conversation notifications as read:', notifErr.message);
+      }
+    }
+
     let messageQuery = { conversationId: id };
 
     // If current user previously cleared history, only show messages after their clearedAt timestamp

@@ -376,14 +376,26 @@ const CommunityScreen = ({ navigation, route }) => {
                       </View>
                     </View>
 
-                    <TouchableOpacity
-                      style={styles.claimButton}
-                      onPress={() => navigation.navigate('ShareDetail', { shareId: item._id })}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.claimButtonText}>Nhận đồ</Text>
-                      <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-                    </TouchableOpacity>
+                    {item.author?._id?.toString() === currentUserId?.toString() ||
+                    item.createdBy?.toString() === currentUserId?.toString() ? (
+                      <TouchableOpacity
+                        style={[styles.claimButton, { backgroundColor: '#6B7280' }]}
+                        onPress={() => navigation.navigate('ShareDetail', { shareId: item._id })}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.claimButtonText}>Bài của bạn</Text>
+                        <Ionicons name="eye-outline" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.claimButton}
+                        onPress={() => navigation.navigate('ShareDetail', { shareId: item._id })}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.claimButtonText}>Nhận đồ</Text>
+                        <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               </TouchableOpacity>

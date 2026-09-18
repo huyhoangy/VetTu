@@ -109,10 +109,51 @@ exports.markAsRead = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy thông báo' });
     }
 
+    // If this notification belongs to a conversation, mark all related notifications for this recipient as read as well!
+    if (notification.data?.conversationId) {
+      await Notification.updateMany(
+        {
+          recipient: notification.recipient,
+          'data.conversationId': notification.data.conversationId,
+          isRead: false,
+        },
+        { isRead: true }
+      );
+    }
+
     res.status(200).json({
       success: true,
       message: 'Đã đánh dấu đã đọc',
       data: notification,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi cập nhật thông báo',
+      error: error.message,
+    });
+  }
+};
+
+// PUT /api/notifications/read-by-conversation
+exports.markReadByConversation = async (req, res) => {
+  try {
+    const { conversationId, userId } = req.body;
+    let currentUserId = req.user?._id || userId;
+    if (!conversationId) {
+      return res.status(400).json({ success: false, message: 'Thiếu conversationId' });
+    }
+
+    const query = { 'data.conversationId': conversationId, isRead: false };
+    if (currentUserId) {
+      query.recipient = currentUserId;
+    }
+
+    await Notification.updateMany(query, { isRead: true });
+
+    res.status(200).json({
+      success: true,
+      message: 'Đã đánh dấu tất cả thông báo của đoạn chat là đã đọc',
     });
   } catch (error) {
     res.status(500).json({

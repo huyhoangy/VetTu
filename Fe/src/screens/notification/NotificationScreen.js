@@ -82,29 +82,42 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const handleNotificationPress = async (item) => {
-    // 1. Mark as read
-    if (!item.isRead) {
-      try {
-        notificationApi.markAsRead(item._id);
-        setNotifications((prev) =>
-          prev.map((n) => (n._id === item._id ? { ...n, isRead: true } : n))
-        );
-      } catch (e) {}
+    const convId = item.data?.conversationId;
+
+    // 1. Mark as read immediately in local state
+    setNotifications((prev) =>
+      prev.map((n) => {
+        if (n._id === item._id) return { ...n, isRead: true };
+        // If from the same conversation, mark as read too
+        if (convId && n.data?.conversationId === convId) return { ...n, isRead: true };
+        return n;
+      })
+    );
+
+    // 2. Call backend APIs
+    try {
+      if (convId) {
+        await notificationApi.markReadByConversation(convId, currentUserId);
+      } else if (!item.isRead) {
+        await notificationApi.markAsRead(item._id);
+      }
+    } catch (e) {
+      console.log('Error marking notification as read:', e.message);
     }
 
-    // 2. Navigate to relevant target
-    if (item.type === 'MESSAGE' && item.data?.conversationId) {
+    // 3. Navigate to relevant target
+    if (item.type === 'MESSAGE' && convId) {
       navigation.navigate('Chat', {
-        conversationId: item.data.conversationId,
+        conversationId: convId,
         donorUser: item.sender || { name: 'Hàng xóm', avatar: 'https://cdn-icons-png.flaticon.com/512/847/847969.png' },
       });
     } else if (item.type === 'NEW_SHARE' && item.data?.shareId) {
       navigation.navigate('ShareDetail', {
         shareId: item.data.shareId?._id || item.data.shareId,
       });
-    } else if (item.type === 'CLAIM_CONFIRMED' && item.data?.conversationId) {
+    } else if (item.type === 'CLAIM_CONFIRMED' && convId) {
       navigation.navigate('Chat', {
-        conversationId: item.data.conversationId,
+        conversationId: convId,
         donorUser: item.sender || { name: 'Hàng xóm', avatar: 'https://cdn-icons-png.flaticon.com/512/847/847969.png' },
       });
     }
