@@ -129,6 +129,14 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.headerRightGroup}>
             <TouchableOpacity
               style={styles.bellBtn}
+              onPress={() => navigation.navigate('Favorites')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="heart-outline" size={22} color="#EF4444" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.bellBtn}
               onPress={() => navigation.navigate('Notifications')}
               activeOpacity={0.7}
             >

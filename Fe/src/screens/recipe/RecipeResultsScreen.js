@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,60 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { useAuth } from '../../context/AuthContext';
+import recipeApi from '../../api/recipeApi';
 
 const RecipeResultsScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { matchedRecipes = [], selectedIngredients = [] } = route.params || {};
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL', '100', 'QUICK'
+  const [favoriteIds, setFavoriteIds] = useState([]);
+
+  const currentUserId = user?._id || user?.id;
+
+  const fetchFavorites = useCallback(async () => {
+    if (currentUserId) {
+      try {
+        const res = await recipeApi.getFavorites(currentUserId);
+        if (res.success && res.data) {
+          setFavoriteIds(res.data.map((r) => r._id));
+        }
+      } catch (e) {}
+    }
+  }, [currentUserId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchFavorites();
+    }, [fetchFavorites])
+  );
+
+  const handleToggleFavorite = async (recipeId) => {
+    if (!currentUserId) {
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập để lưu món ăn yêu thích');
+      return;
+    }
+
+    const isFav = favoriteIds.includes(recipeId);
+    // Optimistic toggle
+    setFavoriteIds((prev) =>
+      isFav ? prev.filter((id) => id !== recipeId) : [...prev, recipeId]
+    );
+
+    try {
+      await recipeApi.toggleFavorite(recipeId, currentUserId);
+    } catch (err) {
+      // Revert on error
+      fetchFavorites();
+    }
+  };
 
   const filteredRecipes = useMemo(() => {
     if (activeFilter === '100') {
@@ -35,6 +80,7 @@ const RecipeResultsScreen = ({ route, navigation }) => {
     const is100 = item.matchPercentage === 100;
     const isHigh = item.matchPercentage >= 60;
     const totalTime = (item.prepTimeMinutes || 0) + (item.cookTimeMinutes || 0);
+    const isFavorited = favoriteIds.includes(item._id);
 
     return (
       <TouchableOpacity
@@ -65,6 +111,20 @@ const RecipeResultsScreen = ({ route, navigation }) => {
               {is100 ? '100% Nấu ngay' : `${item.matchPercentage}% Khớp`}
             </Text>
           </View>
+
+          {/* Quick Heart Toggle Button */}
+          <TouchableOpacity
+            style={styles.cardHeartBtn}
+            onPress={() => handleToggleFavorite(item._id)}
+            activeOpacity={0.8}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name={isFavorited ? 'heart' : 'heart-outline'}
+              size={18}
+              color={isFavorited ? '#EF4444' : '#4B5563'}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Recipe Content */}
@@ -294,6 +354,22 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
+  },
+  cardHeartBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
   },
   matchBadge: {
     position: 'absolute',

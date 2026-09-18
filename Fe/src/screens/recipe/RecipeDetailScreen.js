@@ -12,16 +12,45 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
+import { useAuth } from '../../context/AuthContext';
 import recipeApi from '../../api/recipeApi';
 
 const RecipeDetailScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const { recipeId, recipe: initialRecipe } = route.params || {};
+
+  const currentUserId = user?._id || user?.id;
 
   const [recipe, setRecipe] = useState(initialRecipe || null);
   const [loading, setLoading] = useState(!initialRecipe);
   const [completedSteps, setCompletedSteps] = useState([]);
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [togglingFav, setTogglingFav] = useState(false);
+
+  // Check initial favorite status
+  useEffect(() => {
+    const targetId = recipe?._id || recipeId;
+    if (user?.favorites && targetId) {
+      const favorited = user.favorites.some(
+        (fav) => (typeof fav === 'string' ? fav : fav?._id) === targetId
+      );
+      setIsFavorite(favorited);
+    }
+  }, [user?.favorites, recipe?._id, recipeId]);
+
+  // Fetch user favorites list to ensure accurate favorite state
+  useEffect(() => {
+    if (currentUserId) {
+      recipeApi.getFavorites(currentUserId).then((res) => {
+        if (res.success && res.data) {
+          const targetId = recipe?._id || recipeId;
+          const favorited = res.data.some((fav) => fav._id === targetId);
+          setIsFavorite(favorited);
+        }
+      }).catch(() => {});
+    }
+  }, [currentUserId, recipe?._id, recipeId]);
 
   useEffect(() => {
     if (!initialRecipe && recipeId) {
@@ -42,6 +71,41 @@ const RecipeDetailScreen = ({ route, navigation }) => {
       fetchDetail();
     }
   }, [recipeId, initialRecipe]);
+
+  const handleToggleFavorite = async () => {
+    const targetId = recipe?._id || recipeId;
+    if (!targetId || !currentUserId) {
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập để lưu món ăn yêu thích');
+      return;
+    }
+
+    if (togglingFav) return;
+
+    // Optimistic toggle
+    const nextState = !isFavorite;
+    setIsFavorite(nextState);
+    setTogglingFav(true);
+
+    try {
+      const res = await recipeApi.toggleFavorite(targetId, currentUserId);
+      if (res.success) {
+        if (recipe) {
+          setRecipe((prev) => ({
+            ...prev,
+            likesCount: res.likesCount !== undefined ? res.likesCount : prev.likesCount,
+          }));
+        }
+      } else {
+        // Revert on failure
+        setIsFavorite(!nextState);
+      }
+    } catch (err) {
+      setIsFavorite(!nextState);
+      Alert.alert('Lỗi', 'Không thể cập nhật danh sách yêu thích');
+    } finally {
+      setTogglingFav(false);
+    }
+  };
 
   const toggleStep = (stepNumber) => {
     setCompletedSteps((prev) =>
@@ -102,14 +166,14 @@ const RecipeDetailScreen = ({ route, navigation }) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.circleBtn}
-              onPress={() => setIsBookmarked(!isBookmarked)}
+              style={[styles.circleBtn, isFavorite && styles.circleBtnActive]}
+              onPress={handleToggleFavorite}
               activeOpacity={0.8}
             >
               <Ionicons
-                name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                name={isFavorite ? 'heart' : 'heart-outline'}
                 size={22}
-                color={isBookmarked ? Colors.primary : '#1F2937'}
+                color={isFavorite ? '#EF4444' : '#1F2937'}
               />
             </TouchableOpacity>
           </View>

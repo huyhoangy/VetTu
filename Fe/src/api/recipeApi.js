@@ -15,6 +15,17 @@ export const recipeApi = {
   getRecipeById: (id) => {
     return axiosClient.get(`/recipes/${id}`);
   },
+
+  // POST /api/recipes/:id/favorite
+  toggleFavorite: (id, userId) => {
+    return axiosClient.post(`/recipes/${id}/favorite`, { userId });
+  },
+
+  // GET /api/recipes/favorites
+  getFavorites: (userId) => {
+    const url = userId ? `/recipes/favorites?userId=${userId}` : '/recipes/favorites';
+    return axiosClient.get(url);
+  },
 };
 
 export default recipeApi;

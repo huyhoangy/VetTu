@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,30 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
+import recipeApi from '../../api/recipeApi';
 
 const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
+  const [favoritesCount, setFavoritesCount] = useState(user?.favorites?.length || 0);
+
+  const currentUserId = user?._id || user?.id;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (currentUserId) {
+        recipeApi.getFavorites(currentUserId).then((res) => {
+          if (res.success && res.data) {
+            setFavoritesCount(res.data.length);
+          }
+        }).catch(() => {});
+      }
+    }, [currentUserId])
+  );
 
   const handleLogout = () => {
     Alert.alert(
@@ -37,7 +54,7 @@ const ProfileScreen = ({ navigation }) => {
       title: 'Hoạt động của bạn',
       items: [
         { id: 'messages', title: 'Tin nhắn & Lịch sử nhận món', icon: 'chatbubble-ellipses-outline', badge: 'Mới', color: '#3B82F6' },
-        { id: 'favorites', title: 'Món ăn yêu thích', icon: 'heart-outline', badge: '12', color: '#EF4444' },
+        { id: 'favorites', title: 'Món ăn yêu thích', icon: 'heart', badge: favoritesCount > 0 ? `${favoritesCount}` : null, color: '#EF4444' },
         { id: 'cooked', title: 'Lịch sử nấu ăn', icon: 'restaurant-outline', badge: '8', color: Colors.primary },
         { id: 'my_shares', title: 'Thực phẩm tôi đã chia sẻ', icon: 'gift-outline', badge: '3', color: '#10B981' },
       ],
@@ -125,6 +142,8 @@ const ProfileScreen = ({ navigation }) => {
                       navigation.navigate('ConversationsList');
                     } else if (item.id === 'notifications') {
                       navigation.navigate('Notifications');
+                    } else if (item.id === 'favorites') {
+                      navigation.navigate('Favorites');
                     } else {
                       Alert.alert(item.title, 'Tính năng đang phát triển trong các bản cập nhật tới!');
                     }

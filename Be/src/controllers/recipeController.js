@@ -139,9 +139,91 @@ const seedRecipes = async (req, res, next) => {
   }
 };
 
+// @desc    Toggle favorite/bookmark recipe for user
+// @route   POST /api/recipes/:id/favorite
+// @access  Public / Private
+const toggleFavoriteRecipe = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user?._id || req.user?.id || req.body?.userId;
+
+    if (!currentUserId) {
+      return res.status(400).json({ success: false, message: 'Thiếu thông tin người dùng' });
+    }
+
+    const user = await User.findById(currentUserId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    const recipe = await Recipe.findById(id);
+    if (!recipe) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy món ăn' });
+    }
+
+    if (!user.favorites) user.favorites = [];
+
+    const isFav = user.favorites.some((favId) => favId.toString() === id.toString());
+
+    if (isFav) {
+      user.favorites = user.favorites.filter((favId) => favId.toString() !== id.toString());
+      if (recipe.likesCount > 0) recipe.likesCount -= 1;
+    } else {
+      user.favorites.push(id);
+      recipe.likesCount = (recipe.likesCount || 0) + 1;
+    }
+
+    await user.save();
+    await recipe.save();
+
+    return res.status(200).json({
+      success: true,
+      isFavorite: !isFav,
+      likesCount: recipe.likesCount,
+      favoritesCount: user.favorites.length,
+      message: !isFav ? 'Đã lưu món ăn vào danh sách yêu thích' : 'Đã bỏ lưu món ăn khỏi yêu thích',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get user favorite recipes
+// @route   GET /api/recipes/favorites
+// @access  Public / Private
+const getFavoriteRecipes = async (req, res, next) => {
+  try {
+    const currentUserId = req.user?._id || req.user?.id || req.query.userId;
+
+    if (!currentUserId) {
+      return res.status(400).json({ success: false, message: 'Thiếu thông tin người dùng' });
+    }
+
+    const user = await User.findById(currentUserId).populate({
+      path: 'favorites',
+      populate: { path: 'createdBy', select: 'name avatar' },
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: user.favorites ? user.favorites.length : 0,
+      data: user.favorites || [],
+      message: 'Lấy danh sách món yêu thích thành công',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   matchRecipes,
   getAllRecipes,
   getRecipeById,
   seedRecipes,
+  toggleFavoriteRecipe,
+  getFavoriteRecipes,
 };

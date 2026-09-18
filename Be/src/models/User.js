@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+require('./Recipe');
 
 const userSchema = new mongoose.Schema(
   {
@@ -43,6 +44,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Recipe',
+      },
+    ],
     location: {
       type: {
         type: String,
