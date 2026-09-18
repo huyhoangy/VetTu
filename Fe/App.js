@@ -42,12 +42,15 @@ function NotificationWatcher() {
   return null;
 }
 
+import InAppNotificationBanner from './src/components/common/InAppNotificationBanner';
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
         <StatusBar style="dark" />
         <NotificationWatcher />
+        <InAppNotificationBanner />
         <AppNavigator />
       </AuthProvider>
     </SafeAreaProvider>
