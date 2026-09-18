@@ -191,14 +191,24 @@ const CommunityScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.bellButton}
-          onPress={() => navigation.navigate('Notifications')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="notifications-outline" size={22} color={Colors.text} />
-          {unreadNotifs > 0 && <View style={styles.bellBadge} />}
-        </TouchableOpacity>
+        <View style={styles.headerRightRow}>
+          <TouchableOpacity
+            style={styles.mySharesBtn}
+            onPress={() => navigation.navigate('MySharedItems')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="gift-outline" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.bellButton}
+            onPress={() => navigation.navigate('Notifications')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="notifications-outline" size={22} color={Colors.text} />
+            {unreadNotifs > 0 && <View style={styles.bellBadge} />}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Input Bar */}
@@ -454,6 +464,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textSecondary,
     maxWidth: 200,
+  },
+  headerRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mySharesBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFF7ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
   },
   bellButton: {
     width: 40,

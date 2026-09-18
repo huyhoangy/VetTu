@@ -38,6 +38,29 @@ export const shareApi = {
     return await axiosClient.put(`/shares/${id}/status`, { status });
   },
 
+  // GET /api/shares/my-shares
+  getMyShares: async (params = {}) => {
+    const { userId, status = 'ALL', search = '' } = typeof params === 'string' ? { userId: params } : params;
+    const queryParams = new URLSearchParams();
+    if (userId) queryParams.append('userId', userId);
+    if (status && status !== 'ALL') queryParams.append('status', status);
+    if (search) queryParams.append('search', search);
+
+    const queryStr = queryParams.toString();
+    return await axiosClient.get(`/shares/my-shares${queryStr ? `?${queryStr}` : ''}`);
+  },
+
+  // PUT /api/shares/:id
+  updateShare: async (id, shareData) => {
+    return await axiosClient.put(`/shares/${id}`, shareData);
+  },
+
+  // DELETE /api/shares/:id
+  deleteShare: async (id, userId) => {
+    const queryStr = userId ? `?userId=${userId}` : '';
+    return await axiosClient.delete(`/shares/${id}${queryStr}`);
+  },
+
   // POST /api/shares/seed
   seedSampleShares: async () => {
     return await axiosClient.post('/shares/seed');

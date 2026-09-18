@@ -387,6 +387,172 @@ exports.createShare = async (req, res) => {
   }
 };
 
+// GET /api/shares/my-shares
+exports.getMyShares = async (req, res) => {
+  try {
+    const currentUserId = req.user?._id || req.user?.id || req.query.userId;
+    const { status, search } = req.query;
+
+    if (!currentUserId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu thông tin người dùng',
+      });
+    }
+
+    let filter = { createdBy: currentUserId };
+
+    if (status && status !== 'ALL') {
+      filter.status = status;
+    }
+
+    if (search && search.trim()) {
+      filter.$or = [
+        { title: { $regex: search.trim(), $options: 'i' } },
+        { description: { $regex: search.trim(), $options: 'i' } },
+        { addressName: { $regex: search.trim(), $options: 'i' } },
+      ];
+    }
+
+    const shares = await FoodShare.find(filter)
+      .populate('createdBy', 'name avatar rating')
+      .sort({ createdAt: -1 });
+
+    // Compute stats for all user's shared items
+    const allUserShares = await FoodShare.find({ createdBy: currentUserId });
+    const totalShares = allUserShares.length;
+    const availableCount = allUserShares.filter((s) => s.status === 'AVAILABLE').length;
+    const reservedCount = allUserShares.filter((s) => s.status === 'RESERVED').length;
+    const completedCount = allUserShares.filter((s) => s.status === 'COMPLETED').length;
+    const expiredCount = allUserShares.filter((s) => s.status === 'EXPIRED').length;
+
+    res.status(200).json({
+      success: true,
+      count: shares.length,
+      data: shares,
+      stats: {
+        totalShares,
+        availableCount,
+        reservedCount,
+        completedCount,
+        expiredCount,
+      },
+      message: 'Lấy danh sách thực phẩm đã chia sẻ thành công',
+    });
+  } catch (error) {
+    console.error('Error in getMyShares:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải danh sách thực phẩm đã chia sẻ',
+      error: error.message,
+    });
+  }
+};
+
+// DELETE /api/shares/:id
+exports.deleteShare = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user?._id || req.user?.id || req.body?.userId || req.query?.userId;
+
+    const share = await FoodShare.findById(id);
+    if (!share) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy bài chia sẻ',
+      });
+    }
+
+    if (currentUserId && share.createdBy.toString() !== currentUserId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền xóa bài chia sẻ này',
+      });
+    }
+
+    await FoodShare.findByIdAndDelete(id);
+
+    // Get remaining count
+    const remainingCount = await FoodShare.countDocuments({ createdBy: share.createdBy });
+
+    res.status(200).json({
+      success: true,
+      remainingCount,
+      message: 'Đã xóa bài chia sẻ thành công',
+    });
+  } catch (error) {
+    console.error('Error deleting share:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể xóa bài chia sẻ',
+      error: error.message,
+    });
+  }
+};
+
+// PUT /api/shares/:id
+exports.updateShare = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user?._id || req.user?.id || req.body?.userId;
+    const {
+      title,
+      description,
+      category,
+      type,
+      quantity,
+      images,
+      addressName,
+      contactPhone,
+      contactNote,
+      status,
+    } = req.body;
+
+    const share = await FoodShare.findById(id);
+    if (!share) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy bài chia sẻ',
+      });
+    }
+
+    if (currentUserId && share.createdBy.toString() !== currentUserId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn không có quyền chỉnh sửa bài chia sẻ này',
+      });
+    }
+
+    if (title) share.title = title.trim();
+    if (description !== undefined) share.description = description.trim();
+    if (category) share.category = category;
+    if (type) share.type = type;
+    if (quantity) share.quantity = quantity.trim();
+    if (images && Array.isArray(images) && images.length > 0) share.images = images;
+    if (addressName) share.addressName = addressName.trim();
+    if (contactPhone !== undefined) share.contactPhone = contactPhone.trim();
+    if (contactNote !== undefined) share.contactNote = contactNote.trim();
+    if (status) share.status = status;
+
+    await share.save();
+
+    const updatedShare = await FoodShare.findById(id).populate('createdBy', 'name avatar rating');
+
+    res.status(200).json({
+      success: true,
+      message: 'Cập nhật bài chia sẻ thành công',
+      data: updatedShare,
+    });
+  } catch (error) {
+    console.error('Error updating share:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể cập nhật bài chia sẻ',
+      error: error.message,
+    });
+  }
+};
+
 // PUT /api/shares/:id/status
 exports.updateShareStatus = async (req, res) => {
   try {

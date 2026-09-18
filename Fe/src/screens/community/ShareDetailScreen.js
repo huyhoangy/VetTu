@@ -260,43 +260,116 @@ const ShareDetailScreen = ({ navigation, route }) => {
           { paddingBottom: Math.max(insets.bottom, 16) + 10 },
         ]}
       >
-        {!isMyPost && (
-          <TouchableOpacity style={styles.callBtn} onPress={handleCall} activeOpacity={0.8}>
-            <Ionicons name="call-outline" size={22} color={Colors.primary} />
-          </TouchableOpacity>
-        )}
+        {isMyPost ? (
+          <>
+            <TouchableOpacity
+              style={styles.manageStatusBtn}
+              onPress={() => {
+                Alert.alert(
+                  'Cập nhật trạng thái món',
+                  `Chọn trạng thái mới cho "${share.title}":`,
+                  [
+                    {
+                      text: '🟢 Đang còn sẵn (AVAILABLE)',
+                      onPress: async () => {
+                        const res = await shareApi.updateShareStatus(share._id, 'AVAILABLE');
+                        if (res.success) setShare((prev) => ({ ...prev, status: 'AVAILABLE' }));
+                      },
+                    },
+                    {
+                      text: '🤝 Đã hẹn người lấy (RESERVED)',
+                      onPress: async () => {
+                        const res = await shareApi.updateShareStatus(share._id, 'RESERVED');
+                        if (res.success) setShare((prev) => ({ ...prev, status: 'RESERVED' }));
+                      },
+                    },
+                    {
+                      text: '✅ Đã tặng xong (COMPLETED)',
+                      onPress: async () => {
+                        const res = await shareApi.updateShareStatus(share._id, 'COMPLETED');
+                        if (res.success) setShare((prev) => ({ ...prev, status: 'COMPLETED' }));
+                      },
+                    },
+                    { text: 'Huỷ', style: 'cancel' },
+                  ]
+                );
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="sync-outline" size={18} color={Colors.primary} />
+              <Text style={styles.manageStatusBtnText}>Đổi trạng thái</Text>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[
-            styles.claimMainBtn,
-            isMyPost
-              ? styles.myPostBtn
-              : share.status === 'COMPLETED'
-              ? { backgroundColor: '#9CA3AF' }
-              : null,
-          ]}
-          onPress={handleContactDonor}
-          activeOpacity={isMyPost ? 0.9 : 0.85}
-        >
-          <Ionicons
-            name={
-              isMyPost
-                ? 'person-circle'
-                : share.status === 'COMPLETED'
-                ? 'checkmark-circle'
-                : 'chatbubble-ellipses'
-            }
-            size={20}
-            color="#FFFFFF"
-          />
-          <Text style={styles.claimMainText}>
-            {isMyPost
-              ? 'Món do chính bạn chia sẻ'
-              : share.status === 'COMPLETED'
-              ? 'Món này đã hoàn tất nhận'
-              : 'Nhắn tin nhận món này'}
-          </Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deletePostBtn}
+              onPress={() => {
+                Alert.alert(
+                  'Xoá bài chia sẻ',
+                  'Bạn có chắc chắn muốn xoá bài chia sẻ này khỏi bản tin?',
+                  [
+                    { text: 'Huỷ', style: 'cancel' },
+                    {
+                      text: 'Xoá vĩnh viễn',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          const res = await shareApi.deleteShare(share._id, myId);
+                          if (res.success) {
+                            Alert.alert('Thành công', 'Đã xoá bài chia sẻ thành công', [
+                              { text: 'OK', onPress: () => navigation.goBack() },
+                            ]);
+                          }
+                        } catch (e) {
+                          Alert.alert('Lỗi', 'Không thể xoá bài chia sẻ');
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="trash-outline" size={18} color="#EF4444" />
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity style={styles.callBtn} onPress={handleCall} activeOpacity={0.8}>
+              <Ionicons name="call-outline" size={22} color={Colors.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.claimMainBtn,
+                share.status === 'COMPLETED' ? { backgroundColor: '#9CA3AF' } : null,
+              ]}
+              onPress={handleContactDonor}
+              disabled={chatStarting || share.status === 'COMPLETED'}
+              activeOpacity={0.85}
+            >
+              {chatStarting ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons
+                    name={
+                      share.status === 'COMPLETED'
+                        ? 'checkmark-circle'
+                        : 'chatbubble-ellipses'
+                    }
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.claimMainText}>
+                    {share.status === 'COMPLETED'
+                      ? 'Món này đã hoàn tất nhận'
+                      : 'Nhắn tin nhận món này'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </View>
   );
@@ -562,6 +635,33 @@ const styles = StyleSheet.create({
   },
   myPostBtn: {
     backgroundColor: '#6B7280',
+  },
+  manageStatusBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1.5,
+    borderColor: '#FFEDD5',
+    height: 50,
+    borderRadius: 16,
+    gap: 8,
+  },
+  manageStatusBtnText: {
+    color: Colors.primary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  deletePostBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1.5,
+    borderColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   claimMainText: {
     color: '#FFFFFF',

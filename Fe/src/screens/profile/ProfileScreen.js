@@ -15,12 +15,14 @@ import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import recipeApi from '../../api/recipeApi';
 import cookingHistoryApi from '../../api/cookingHistoryApi';
+import shareApi from '../../api/shareApi';
 
 const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const [favoritesCount, setFavoritesCount] = useState(user?.favorites?.length || 0);
   const [cookedCount, setCookedCount] = useState(0);
+  const [mySharesCount, setMySharesCount] = useState(0);
 
   const currentUserId = user?._id || user?.id;
 
@@ -38,6 +40,13 @@ const ProfileScreen = ({ navigation }) => {
         cookingHistoryApi.getHistory(currentUserId).then((res) => {
           if (res.success && res.stats) {
             setCookedCount(res.stats.totalCooked || res.count || 0);
+          }
+        }).catch(() => {});
+
+        // Fetch my shared items count
+        shareApi.getMyShares({ userId: currentUserId }).then((res) => {
+          if (res.success) {
+            setMySharesCount(res.stats?.totalShares || res.count || 0);
           }
         }).catch(() => {});
       }
@@ -66,7 +75,7 @@ const ProfileScreen = ({ navigation }) => {
         { id: 'messages', title: 'Tin nhắn & Lịch sử nhận món', icon: 'chatbubble-ellipses-outline', badge: 'Mới', color: '#3B82F6' },
         { id: 'favorites', title: 'Món ăn yêu thích', icon: 'heart', badge: favoritesCount > 0 ? `${favoritesCount}` : null, color: '#EF4444' },
         { id: 'cooked', title: 'Lịch sử nấu ăn', icon: 'restaurant-outline', badge: cookedCount > 0 ? `${cookedCount}` : null, color: Colors.primary },
-        { id: 'my_shares', title: 'Thực phẩm tôi đã chia sẻ', icon: 'gift-outline', badge: '3', color: '#10B981' },
+        { id: 'my_shares', title: 'Thực phẩm tôi đã chia sẻ', icon: 'gift-outline', badge: mySharesCount > 0 ? `${mySharesCount}` : null, color: '#10B981' },
       ],
     },
     {
@@ -123,12 +132,12 @@ const ProfileScreen = ({ navigation }) => {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statNumber}>{mySharesCount}</Text>
               <Text style={styles.statLabel}>Đã chia sẻ</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>4.9</Text>
+              <Text style={styles.statNumber}>5.0</Text>
               <Text style={styles.statLabel}>Đánh giá</Text>
             </View>
           </View>
@@ -156,6 +165,8 @@ const ProfileScreen = ({ navigation }) => {
                       navigation.navigate('Favorites');
                     } else if (item.id === 'cooked') {
                       navigation.navigate('CookingHistory');
+                    } else if (item.id === 'my_shares') {
+                      navigation.navigate('MySharedItems');
                     } else {
                       Alert.alert(item.title, 'Tính năng đang phát triển trong các bản cập nhật tới!');
                     }
