@@ -191,6 +191,32 @@ exports.markAllAsRead = async (req, res) => {
   }
 };
 
+// DELETE /api/notifications/delete-all
+exports.deleteAllNotifications = async (req, res) => {
+  try {
+    let currentUserId = req.user?._id || req.body?.userId || req.query.userId;
+    if (!currentUserId) {
+      const firstUser = await User.findOne();
+      currentUserId = firstUser?._id;
+    }
+
+    if (currentUserId) {
+      await Notification.deleteMany({ recipient: currentUserId });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Đã xóa tất cả thông báo thành công',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi xóa tất cả thông báo',
+      error: error.message,
+    });
+  }
+};
+
 // DELETE /api/notifications/:id
 exports.deleteNotification = async (req, res) => {
   try {

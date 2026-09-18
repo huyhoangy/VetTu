@@ -81,6 +81,33 @@ const NotificationScreen = ({ navigation }) => {
     }
   };
 
+  const handleDeleteAll = () => {
+    if (notifications.length === 0) {
+      Alert.alert('Thông báo', 'Danh sách thông báo hiện đang trống.');
+      return;
+    }
+
+    Alert.alert(
+      'Xóa tất cả thông báo 🗑️',
+      'Bạn có chắc chắn muốn xóa toàn bộ danh sách thông báo không? Hành động này không thể hoàn tác.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa hết',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await notificationApi.deleteAllNotifications(currentUserId);
+              setNotifications([]);
+            } catch (e) {
+              Alert.alert('Lỗi', 'Không thể xóa tất cả thông báo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleNotificationPress = async (item) => {
     const convId = item.data?.conversationId;
 
@@ -173,14 +200,25 @@ const NotificationScreen = ({ navigation }) => {
 
         <Text style={styles.headerTitle}>Thông báo 🔔</Text>
 
-        <TouchableOpacity
-          style={styles.readAllBtn}
-          onPress={handleMarkAllAsRead}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="checkmark-done" size={16} color={Colors.primary} />
-          <Text style={styles.readAllText}>Đã đọc</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.readAllBtn}
+            onPress={handleMarkAllAsRead}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="checkmark-done" size={15} color={Colors.primary} />
+            <Text style={styles.readAllText}>Đã đọc</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.deleteAllBtn}
+            onPress={handleDeleteAll}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={15} color="#EF4444" />
+            <Text style={styles.deleteAllText}>Xóa hết</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Filter Tabs */}
@@ -312,6 +350,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.text,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   readAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -325,6 +368,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: Colors.primary,
+  },
+  deleteAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  deleteAllText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EF4444',
   },
   filterTabsContainer: {
     backgroundColor: '#FFFFFF',

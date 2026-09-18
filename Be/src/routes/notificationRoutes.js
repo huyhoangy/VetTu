@@ -17,6 +17,9 @@ router.put('/read-by-conversation', notificationController.markReadByConversatio
 // Mark single notification as read
 router.put('/:id/read', notificationController.markAsRead);
 
+// Delete all notifications for current user
+router.delete('/delete-all', notificationController.deleteAllNotifications);
+
 // Delete single notification
 router.delete('/:id', notificationController.deleteNotification);
 

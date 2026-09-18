@@ -28,6 +28,11 @@ export const notificationApi = {
     return await axiosClient.put('/notifications/read-by-conversation', { conversationId, userId });
   },
 
+  // DELETE /api/notifications/delete-all
+  deleteAllNotifications: async (userId) => {
+    return await axiosClient.delete(`/notifications/delete-all${userId ? `?userId=${userId}` : ''}`);
+  },
+
   // DELETE /api/notifications/:id
   deleteNotification: async (notificationId) => {
     return await axiosClient.delete(`/notifications/${notificationId}`);
