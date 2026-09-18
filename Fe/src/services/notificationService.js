@@ -1,17 +1,27 @@
 import { Platform, Vibration } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { navigate } from '../navigation/navigationRef';
 import notificationApi from '../api/notificationApi';
 import authApi from '../api/authApi';
 
+// Determine if currently running inside Expo Go Client
+const isExpoGo =
+  Constants?.appOwnership === 'expo' ||
+  Constants?.executionEnvironment === ExecutionEnvironment.StoreClient;
+
 // Configure how notifications are displayed when app is running (foreground / background)
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+} catch (e) {
+  console.log('Notification handler config note:', e.message);
+}
 
 // Global callback to display the in-app floating banner
 let inAppNotificationCallback = null;
@@ -48,14 +58,16 @@ export const requestNotificationPermissions = async () => {
       return false;
     }
 
-    // Attempt to retrieve and sync Expo Push Token with backend
-    try {
-      const tokenObj = await Notifications.getExpoPushTokenAsync().catch(() => null);
-      if (tokenObj && tokenObj.data) {
-        await authApi.updatePushToken(tokenObj.data).catch(() => {});
+    // On Standalone APK / Dev Builds (NOT Expo Go), get Expo Push Token for remote push
+    if (!isExpoGo) {
+      try {
+        const tokenObj = await Notifications.getExpoPushTokenAsync();
+        if (tokenObj && tokenObj.data) {
+          await authApi.updatePushToken(tokenObj.data).catch(() => {});
+        }
+      } catch (tokenErr) {
+        console.log('Expo Push Token note:', tokenErr.message);
       }
-    } catch (e) {
-      // Ignore in Expo Go if push credentials not configured
     }
 
     return true;
