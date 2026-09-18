@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/home/HomeScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
 import HomeStackNavigator from './HomeStackNavigator';
 import { Colors } from '../constants/colors';
 
@@ -64,7 +65,7 @@ const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="Profile"
-        component={HomeScreen}
+        component={ProfileScreen}
         options={{ tabBarLabel: 'Cá nhân' }}
       />
     </Tab.Navigator>
