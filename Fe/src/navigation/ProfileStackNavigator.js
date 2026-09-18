@@ -6,6 +6,7 @@ import ChatScreen from '../screens/chat/ChatScreen';
 import NotificationScreen from '../screens/notification/NotificationScreen';
 import FavoritesScreen from '../screens/recipe/FavoritesScreen';
 import RecipeDetailScreen from '../screens/recipe/RecipeDetailScreen';
+import CookingHistoryScreen from '../screens/cooking/CookingHistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,6 +20,7 @@ const ProfileStackNavigator = () => {
     >
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} />
+      <Stack.Screen name="CookingHistory" component={CookingHistoryScreen} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} />
       <Stack.Screen name="ConversationsList" component={ConversationsListScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />

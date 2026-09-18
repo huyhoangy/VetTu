@@ -14,20 +14,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import recipeApi from '../../api/recipeApi';
+import cookingHistoryApi from '../../api/cookingHistoryApi';
 
 const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const [favoritesCount, setFavoritesCount] = useState(user?.favorites?.length || 0);
+  const [cookedCount, setCookedCount] = useState(0);
 
   const currentUserId = user?._id || user?.id;
 
   useFocusEffect(
     useCallback(() => {
       if (currentUserId) {
+        // Fetch favorites count
         recipeApi.getFavorites(currentUserId).then((res) => {
           if (res.success && res.data) {
             setFavoritesCount(res.data.length);
+          }
+        }).catch(() => {});
+
+        // Fetch cooking history count
+        cookingHistoryApi.getHistory(currentUserId).then((res) => {
+          if (res.success && res.stats) {
+            setCookedCount(res.stats.totalCooked || res.count || 0);
           }
         }).catch(() => {});
       }
@@ -55,7 +65,7 @@ const ProfileScreen = ({ navigation }) => {
       items: [
         { id: 'messages', title: 'Tin nhắn & Lịch sử nhận món', icon: 'chatbubble-ellipses-outline', badge: 'Mới', color: '#3B82F6' },
         { id: 'favorites', title: 'Món ăn yêu thích', icon: 'heart', badge: favoritesCount > 0 ? `${favoritesCount}` : null, color: '#EF4444' },
-        { id: 'cooked', title: 'Lịch sử nấu ăn', icon: 'restaurant-outline', badge: '8', color: Colors.primary },
+        { id: 'cooked', title: 'Lịch sử nấu ăn', icon: 'restaurant-outline', badge: cookedCount > 0 ? `${cookedCount}` : null, color: Colors.primary },
         { id: 'my_shares', title: 'Thực phẩm tôi đã chia sẻ', icon: 'gift-outline', badge: '3', color: '#10B981' },
       ],
     },
@@ -108,7 +118,7 @@ const ProfileScreen = ({ navigation }) => {
           {/* Stats Bar */}
           <View style={styles.statsBar}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>15</Text>
+              <Text style={styles.statNumber}>{cookedCount}</Text>
               <Text style={styles.statLabel}>Món đã nấu</Text>
             </View>
             <View style={styles.statDivider} />
@@ -144,6 +154,8 @@ const ProfileScreen = ({ navigation }) => {
                       navigation.navigate('Notifications');
                     } else if (item.id === 'favorites') {
                       navigation.navigate('Favorites');
+                    } else if (item.id === 'cooked') {
+                      navigation.navigate('CookingHistory');
                     } else {
                       Alert.alert(item.title, 'Tính năng đang phát triển trong các bản cập nhật tới!');
                     }

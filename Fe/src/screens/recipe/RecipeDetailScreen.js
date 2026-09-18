@@ -8,12 +8,25 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import recipeApi from '../../api/recipeApi';
+import cookingHistoryApi from '../../api/cookingHistoryApi';
+
+const RATING_LABELS = {
+  1: 'Cần cải thiện 😐',
+  2: 'Tạm được 🙂',
+  3: 'Vừa miệng 😋',
+  4: 'Rất ngon 😍',
+  5: 'Tuyệt đỉnh 🌟👨‍🍳',
+};
 
 const RecipeDetailScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -27,6 +40,13 @@ const RecipeDetailScreen = ({ route, navigation }) => {
   const [completedSteps, setCompletedSteps] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [togglingFav, setTogglingFav] = useState(false);
+
+  // Cook Finish Modal State
+  const [showCookModal, setShowCookModal] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [notes, setNotes] = useState('');
+  const [servingsCooked, setServingsCooked] = useState(initialRecipe?.servings || 2);
+  const [savingHistory, setSavingHistory] = useState(false);
 
   // Check initial favorite status
   useEffect(() => {
@@ -105,6 +125,48 @@ const RecipeDetailScreen = ({ route, navigation }) => {
       Alert.alert('Lỗi', 'Không thể cập nhật danh sách yêu thích');
     } finally {
       setTogglingFav(false);
+    }
+  };
+
+  const handleSaveCookingHistory = async () => {
+    const targetId = recipe?._id || recipeId;
+    if (!currentUserId) {
+      setShowCookModal(false);
+      Alert.alert('Thông báo', 'Vui lòng đăng nhập để ghi lại lịch sử nấu ăn');
+      return;
+    }
+
+    try {
+      setSavingHistory(true);
+      const res = await cookingHistoryApi.recordCooked({
+        userId: currentUserId,
+        recipeId: targetId,
+        title: recipe?.title,
+        rating,
+        notes,
+        servingsCooked,
+      });
+
+      setShowCookModal(false);
+
+      Alert.alert(
+        'Tuyệt vời! 🎉👨‍🍳',
+        `Món "${recipe?.title}" đã được lưu vào Lịch sử nấu ăn của bạn! Chúc bạn bữa ăn thật ngon miệng.`,
+        [
+          {
+            text: 'Về trang chủ',
+            onPress: () => navigation.navigate('HomeTab'),
+          },
+          {
+            text: 'Xem Nhật ký 📖',
+            onPress: () => navigation.navigate('CookingHistory'),
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể lưu nhật ký nấu ăn. Vui lòng thử lại sau.');
+    } finally {
+      setSavingHistory(false);
     }
   };
 
@@ -312,16 +374,127 @@ const RecipeDetailScreen = ({ route, navigation }) => {
       >
         <TouchableOpacity
           style={styles.doneCookingBtn}
-          onPress={() => {
-            Alert.alert('Tuyệt vời! 🎉', 'Bạn đã hoàn thành món ăn này. Chúc bạn một bữa ăn thật ngon miệng!');
-            navigation.navigate('Home');
-          }}
+          onPress={() => setShowCookModal(true)}
           activeOpacity={0.85}
         >
           <Ionicons name="sparkles" size={20} color="#FFFFFF" />
           <Text style={styles.doneCookingText}>Hoàn thành nấu ăn 🎉</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Cook Completion Modal Sheet */}
+      <Modal
+        visible={showCookModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCookModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            {/* Top Indicator */}
+            <View style={styles.modalDragHandle} />
+
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.celebrateEmojiBox}>
+                <Text style={styles.celebrateEmoji}>👩‍🍳✨</Text>
+              </View>
+              <Text style={styles.modalTitle}>Món ăn đã sẵn sàng!</Text>
+              <Text style={styles.modalSub}>{recipe.title}</Text>
+            </View>
+
+            {/* Star Rating Selector */}
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionLabel}>Bạn cảm thấy món ăn thế nào?</Text>
+              <View style={styles.starPickerRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={`pick-star-${star}`}
+                    onPress={() => setRating(star)}
+                    activeOpacity={0.7}
+                    style={styles.starTouch}
+                  >
+                    <Ionicons
+                      name={star <= rating ? 'star' : 'star-outline'}
+                      size={32}
+                      color="#F59E0B"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.ratingLabelText}>{RATING_LABELS[rating]}</Text>
+            </View>
+
+            {/* Servings Counter */}
+            <View style={styles.servingsPickerRow}>
+              <Text style={styles.servingsPickerLabel}>Khẩu phần đã nấu:</Text>
+              <View style={styles.counterControl}>
+                <TouchableOpacity
+                  style={styles.counterBtn}
+                  onPress={() => setServingsCooked((p) => Math.max(1, p - 1))}
+                >
+                  <Ionicons name="remove" size={16} color={Colors.text} />
+                </TouchableOpacity>
+                <Text style={styles.counterValue}>{servingsCooked} người</Text>
+                <TouchableOpacity
+                  style={styles.counterBtn}
+                  onPress={() => setServingsCooked((p) => p + 1)}
+                >
+                  <Ionicons name="add" size={16} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Cooking Notes Input */}
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionLabel}>Ghi chú / Mẹo nấu của bạn (tùy chọn):</Text>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Ví dụ: Giảm bớt chút ớt, xào lửa to sẽ giòn ngon hơn..."
+                placeholderTextColor={Colors.textSecondary}
+                value={notes}
+                onChangeText={setNotes}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
+
+            {/* Modal Actions */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.saveHistoryBtn}
+                onPress={handleSaveCookingHistory}
+                disabled={savingHistory}
+                activeOpacity={0.85}
+              >
+                {savingHistory ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="bookmark" size={18} color="#FFFFFF" />
+                    <Text style={styles.saveHistoryText}>Lưu vào Nhật ký nấu ăn</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.skipBtn}
+                onPress={() => {
+                  setShowCookModal(false);
+                  navigation.navigate('HomeTab');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.skipBtnText}>Bỏ qua & Về trang chủ</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -578,6 +751,166 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '800',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 34,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalDragHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#E5E7EB',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  celebrateEmojiBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#FFF7ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  celebrateEmoji: {
+    fontSize: 28,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  modalSub: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  modalSection: {
+    marginBottom: 14,
+  },
+  modalSectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  starPickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  starTouch: {
+    padding: 4,
+  },
+  ratingLabelText: {
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D97706',
+    marginTop: 4,
+  },
+  servingsPickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  servingsPickerLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  counterControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    gap: 10,
+  },
+  counterBtn: {
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  counterValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  noteInput: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    padding: 12,
+    fontSize: 13,
+    color: Colors.text,
+    minHeight: 70,
+  },
+  modalActions: {
+    gap: 10,
+    marginTop: 6,
+  },
+  saveHistoryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveHistoryText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  skipBtn: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  skipBtnText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 
