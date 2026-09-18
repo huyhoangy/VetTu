@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,6 +20,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { Colors } from '../../constants/colors';
 import shareApi from '../../api/shareApi';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const CATEGORIES = [
   { id: 'ALL', title: 'Tất cả 🌟' },
@@ -105,7 +112,14 @@ const CommunityScreen = ({ navigation, route }) => {
       if (res.success && res.data) {
         // Strictly filter out any items that are already COMPLETED
         const availableOnly = res.data.filter((item) => item.status !== 'COMPLETED');
-        setShares(availableOnly);
+        setShares((prev) => {
+          const prevIds = prev.map((s) => s._id).join(',');
+          const nextIds = availableOnly.map((s) => s._id).join(',');
+          if (prevIds !== nextIds && prev.length > 0) {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          }
+          return availableOnly;
+        });
       }
     } catch (error) {
       console.error('Error fetching shares:', error);
@@ -115,9 +129,15 @@ const CommunityScreen = ({ navigation, route }) => {
     }
   }, [userLocation, selectedCategory, selectedType, searchQuery]);
 
+  // Real-time automatic polling every 3 seconds while focused on Community tab
   useFocusEffect(
     useCallback(() => {
       fetchShares(true);
+      const timer = setInterval(() => {
+        fetchShares(true);
+      }, 3000);
+
+      return () => clearInterval(timer);
     }, [fetchShares])
   );
 
