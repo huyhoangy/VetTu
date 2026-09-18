@@ -1,5 +1,4 @@
 import { Platform, Vibration } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { navigate } from '../navigation/navigationRef';
 import notificationApi from '../api/notificationApi';
@@ -10,17 +9,23 @@ const isExpoGo =
   Constants?.appOwnership === 'expo' ||
   Constants?.executionEnvironment === ExecutionEnvironment.StoreClient;
 
-// Configure how notifications are displayed when app is running (foreground / background)
-try {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
-  });
-} catch (e) {
-  console.log('Notification handler config note:', e.message);
+// Safely lazy-load Notifications only in Standalone APK / Dev Client builds (to prevent Expo Go Android top-level crash)
+let Notifications = null;
+if (!isExpoGo) {
+  try {
+    Notifications = require('expo-notifications');
+    if (Notifications?.setNotificationHandler) {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
+      });
+    }
+  } catch (e) {
+    console.log('expo-notifications lazy load note:', e.message);
+  }
 }
 
 // Global callback to display the in-app floating banner
@@ -35,38 +40,38 @@ export const setInAppNotificationCallback = (cb) => {
  */
 export const requestNotificationPermissions = async () => {
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
+    if (!isExpoGo && Notifications) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
 
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Vét Tủ Thông Báo',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#2ECC71',
-        sound: 'default',
-        enableVibrate: true,
-        showBadge: true,
-      });
-    }
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Vét Tủ Thông Báo',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#2ECC71',
+          sound: 'default',
+          enableVibrate: true,
+          showBadge: true,
+        });
+      }
 
-    if (finalStatus !== 'granted') {
-      return false;
-    }
+      if (finalStatus !== 'granted') {
+        return false;
+      }
 
-    // On Standalone APK / Dev Builds (NOT Expo Go), get Expo Push Token for remote push
-    if (!isExpoGo) {
+      // On Standalone APK / Dev Builds, get Expo Push Token for remote push
       try {
         const tokenObj = await Notifications.getExpoPushTokenAsync();
         if (tokenObj && tokenObj.data) {
           await authApi.updatePushToken(tokenObj.data).catch(() => {});
         }
       } catch (tokenErr) {
-        console.log('Expo Push Token note:', tokenErr.message);
+        console.log('Expo Push Token registration note:', tokenErr.message);
       }
     }
 
@@ -78,7 +83,7 @@ export const requestNotificationPermissions = async () => {
 };
 
 /**
- * Display an immediate notification (both in-app floating banner AND Android System Notification)
+ * Display an immediate notification (via in-app floating banner & native alerts)
  */
 export const showDeviceNotification = async ({ title, body, data = {}, type = 'SYSTEM' }) => {
   try {
@@ -93,20 +98,22 @@ export const showDeviceNotification = async ({ title, body, data = {}, type = 'S
       });
     }
 
-    // 2. Trigger native Android OS System Notification (Shows on Lock Screen / Home Screen Notification Drawer)
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: title || 'ChefMatch (Vét Tủ)',
-          body: body || '',
-          data: { ...data, type },
-          sound: 'default',
-          channelId: 'default',
-        },
-        trigger: null, // trigger immediately
-      });
-    } catch (notifErr) {
-      console.log('Error scheduling local notification:', notifErr.message);
+    // 2. Trigger native OS System Notification if available (Standalone / Dev Build)
+    if (!isExpoGo && Notifications?.scheduleNotificationAsync) {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: title || 'ChefMatch (Vét Tủ)',
+            body: body || '',
+            data: { ...data, type },
+            sound: 'default',
+            channelId: 'default',
+          },
+          trigger: null,
+        });
+      } catch (notifErr) {
+        console.log('Error scheduling local notification:', notifErr.message);
+      }
     }
 
     // 3. Subtle vibration
@@ -123,33 +130,37 @@ export const showDeviceNotification = async ({ title, body, data = {}, type = 'S
  */
 export const initNotificationListeners = () => {
   try {
-    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
-      try {
-        const notifData = response?.notification?.request?.content?.data;
-        if (notifData?.conversationId) {
-          navigate('ChatDetail', { conversationId: notifData.conversationId });
-        } else if (notifData?.shareId) {
-          navigate('Community');
-        } else {
-          navigate('Notifications');
+    if (!isExpoGo && Notifications?.addNotificationResponseReceivedListener) {
+      const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+        try {
+          const notifData = response?.notification?.request?.content?.data;
+          if (notifData?.conversationId) {
+            navigate('ChatDetail', { conversationId: notifData.conversationId });
+          } else if (notifData?.shareId) {
+            navigate('Community');
+          } else {
+            navigate('Notifications');
+          }
+        } catch (e) {
+          console.log('Error handling notification tap:', e);
         }
-      } catch (e) {
-        console.log('Error handling notification tap:', e);
-      }
-    });
+      });
 
-    return {
-      remove: () => {
-        if (responseListener && responseListener.remove) {
-          responseListener.remove();
-        }
-      },
-    };
+      return {
+        remove: () => {
+          if (responseListener && responseListener.remove) {
+            responseListener.remove();
+          }
+        },
+      };
+    }
   } catch (err) {
-    return {
-      remove: () => {},
-    };
+    // Ignore in Expo Go
   }
+
+  return {
+    remove: () => {},
+  };
 };
 
 // Track notified IDs to avoid duplicate alerts during current session
