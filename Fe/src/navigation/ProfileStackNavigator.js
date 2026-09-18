@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import ConversationsListScreen from '../screens/chat/ConversationsListScreen';
 import ChatScreen from '../screens/chat/ChatScreen';
+import NotificationScreen from '../screens/notification/NotificationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +18,7 @@ const ProfileStackNavigator = () => {
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
       <Stack.Screen name="ConversationsList" component={ConversationsListScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="Notifications" component={NotificationScreen} />
     </Stack.Navigator>
   );
 };

@@ -123,6 +123,8 @@ const ProfileScreen = ({ navigation }) => {
                   onPress={() => {
                     if (item.id === 'messages') {
                       navigation.navigate('ConversationsList');
+                    } else if (item.id === 'notifications') {
+                      navigation.navigate('Notifications');
                     } else {
                       Alert.alert(item.title, 'Tính năng đang phát triển trong các bản cập nhật tới!');
                     }

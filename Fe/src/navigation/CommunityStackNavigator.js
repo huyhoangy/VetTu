@@ -4,6 +4,7 @@ import CommunityScreen from '../screens/community/CommunityScreen';
 import CreateShareScreen from '../screens/community/CreateShareScreen';
 import ShareDetailScreen from '../screens/community/ShareDetailScreen';
 import ChatScreen from '../screens/chat/ChatScreen';
+import NotificationScreen from '../screens/notification/NotificationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -19,6 +20,7 @@ const CommunityStackNavigator = () => {
       <Stack.Screen name="CreateShare" component={CreateShareScreen} />
       <Stack.Screen name="ShareDetail" component={ShareDetailScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
+      <Stack.Screen name="Notifications" component={NotificationScreen} />
     </Stack.Navigator>
   );
 };

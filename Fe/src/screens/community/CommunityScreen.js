@@ -20,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { Colors } from '../../constants/colors';
 import shareApi from '../../api/shareApi';
+import notificationApi from '../../api/notificationApi';
+import { useAuth } from '../../context/AuthContext';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -42,9 +44,11 @@ const TYPE_FILTERS = [
 
 const CommunityScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState(route?.params?.initialCategory || 'ALL');
   const [selectedType, setSelectedType] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState(route?.params?.initialSearch || '');
@@ -54,6 +58,17 @@ const CommunityScreen = ({ navigation, route }) => {
     address: 'Đang xác định vị trí...',
   });
   const [locationLoading, setLocationLoading] = useState(false);
+
+  const currentUserId = user?._id || user?.id;
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await notificationApi.getUnreadCount(currentUserId);
+      if (res.success && res.unreadCount !== undefined) {
+        setUnreadNotifs(res.unreadCount);
+      }
+    } catch (e) {}
+  }, [currentUserId]);
 
   // Request GPS permission, get coordinates and reverse-geocode real address
   const getCurrentLocation = async () => {
@@ -133,12 +148,14 @@ const CommunityScreen = ({ navigation, route }) => {
   useFocusEffect(
     useCallback(() => {
       fetchShares(true);
+      fetchUnreadCount();
       const timer = setInterval(() => {
         fetchShares(true);
+        fetchUnreadCount();
       }, 3000);
 
       return () => clearInterval(timer);
-    }, [fetchShares])
+    }, [fetchShares, fetchUnreadCount])
   );
 
   useEffect(() => {
@@ -152,6 +169,7 @@ const CommunityScreen = ({ navigation, route }) => {
   const onRefresh = () => {
     setRefreshing(true);
     fetchShares(true);
+    fetchUnreadCount();
   };
 
   return (
@@ -175,10 +193,11 @@ const CommunityScreen = ({ navigation, route }) => {
 
         <TouchableOpacity
           style={styles.bellButton}
-          onPress={() => Alert.alert('Thông báo', 'Chưa có thông báo mới nào')}
+          onPress={() => navigation.navigate('Notifications')}
           activeOpacity={0.7}
         >
           <Ionicons name="notifications-outline" size={22} color={Colors.text} />
+          {unreadNotifs > 0 && <View style={styles.bellBadge} />}
         </TouchableOpacity>
       </View>
 
@@ -431,6 +450,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: 7,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   searchSection: {
     paddingHorizontal: 20,

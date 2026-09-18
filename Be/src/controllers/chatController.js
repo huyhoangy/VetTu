@@ -2,6 +2,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const FoodShare = require('../models/FoodShare');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 // POST /api/chat/conversation
 // Find or create conversation for a food share between current user and donor
@@ -321,6 +322,30 @@ exports.sendMessage = async (req, res) => {
       // Pull all participants from deletedFor so both see new message in their list
       conversation.deletedFor = [];
       await conversation.save();
+
+      // Create notification for other participants
+      try {
+        const senderUser = await User.findById(currentUserId);
+        const otherParticipants = conversation.participants.filter(
+          (p) => p.toString() !== currentUserId.toString()
+        );
+        for (const recipientId of otherParticipants) {
+          await Notification.create({
+            recipient: recipientId,
+            sender: currentUserId,
+            title: `Tin nhắn từ ${senderUser?.name || 'Hàng xóm'} 💬`,
+            message: text.trim().slice(0, 100),
+            type: 'MESSAGE',
+            data: {
+              conversationId: id,
+              shareId: conversation.shareId,
+            },
+            isRead: false,
+          });
+        }
+      } catch (notifErr) {
+        console.log('Error creating message notification:', notifErr.message);
+      }
     }
 
     const populated = await Message.findById(newMessage._id).populate('sender', 'name avatar');
@@ -363,6 +388,25 @@ exports.confirmClaim = async (req, res) => {
       text: '🎉 Giao dịch nhận thực phẩm đã hoàn tất thành công! Cảm ơn bạn đã cùng chung tay chống lãng phí đồ ăn.',
       type: 'SYSTEM',
     });
+
+    // Create confirmation notifications for all participants
+    try {
+      for (const pId of conversation.participants) {
+        await Notification.create({
+          recipient: pId,
+          title: '🎉 Nhận thực phẩm thành công!',
+          message: 'Giao dịch nhận món đã hoàn tất. Cảm ơn bạn đã cùng chung tay chia sẻ chống lãng phí!',
+          type: 'CLAIM_CONFIRMED',
+          data: {
+            conversationId: id,
+            shareId: conversation.shareId,
+          },
+          isRead: false,
+        });
+      }
+    } catch (notifErr) {
+      console.log('Error creating claim notification:', notifErr.message);
+    }
 
     res.status(200).json({
       success: true,

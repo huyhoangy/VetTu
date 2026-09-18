@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import recipeApi from '../../api/recipeApi';
+import notificationApi from '../../api/notificationApi';
 
 const KITCHEN_TIPS = [
   'Bọc giấy báo hoặc màng bọc quanh cuống chuối sẽ giúp chuối tươi lâu hơn 4-5 ngày.',
@@ -32,6 +34,24 @@ const HomeScreen = ({ navigation }) => {
   const [featuredRecipes, setFeaturedRecipes] = useState([]);
   const [recipeCount, setRecipeCount] = useState(39);
   const [loading, setLoading] = useState(true);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+
+  const currentUserId = user?._id || user?.id;
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await notificationApi.getUnreadCount(currentUserId);
+      if (res.success && res.unreadCount !== undefined) {
+        setUnreadNotifs(res.unreadCount);
+      }
+    } catch (e) {}
+  }, [currentUserId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadCount();
+    }, [fetchUnreadCount])
+  );
 
   // Daily tip calculation based on day of the year
   const getDayOfYear = () => {
@@ -105,9 +125,21 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.userName}>{user?.name || 'Đầu bếp Vét Tủ'}</Text>
             </View>
           </View>
-          <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={15} color="#F59E0B" />
-            <Text style={styles.ratingText}>{user?.rating || '5.0'}</Text>
+
+          <View style={styles.headerRightGroup}>
+            <TouchableOpacity
+              style={styles.bellBtn}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={22} color={Colors.text} />
+              {unreadNotifs > 0 && <View style={styles.bellBadge} />}
+            </TouchableOpacity>
+
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={15} color="#F59E0B" />
+              <Text style={styles.ratingText}>{user?.rating || '5.0'}</Text>
+            </View>
           </View>
         </View>
 
@@ -273,6 +305,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: Colors.text,
+  },
+  headerRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bellBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 7,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   ratingBadge: {
     flexDirection: 'row',
