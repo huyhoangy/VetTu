@@ -54,7 +54,7 @@ const recipeSchema = new mongoose.Schema(
     },
     appliance: {
       type: String,
-      enum: ['STOVE', 'AIRFRYER', 'RICE_COOKER', 'MICROWAVE', 'ALL'],
+      enum: ['STOVE', 'AIRFRYER', 'AIR_FRYER', 'RICE_COOKER', 'MICROWAVE', 'ALL'],
       default: 'ALL',
     },
     ingredients: [ingredientItemSchema],

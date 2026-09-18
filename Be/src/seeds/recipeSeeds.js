@@ -942,4 +942,8 @@ const recipes = [
   },
 ];
 
-module.exports = recipes;
+const additionalRecipes = require('./additionalRecipes');
+
+const allRecipes = [...recipes, ...additionalRecipes];
+
+module.exports = allRecipes;
