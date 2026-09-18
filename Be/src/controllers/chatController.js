@@ -92,25 +92,6 @@ exports.getOrCreateConversation = async (req, res) => {
         text: initialMessage || 'Chào bạn, mình thấy bạn đang chia sẻ món này, mình có thể qua xin/nhận được không ạ?',
       });
 
-      // Automatically simulate a friendly donor reply for instant interactive demo
-      setTimeout(async () => {
-        try {
-          const donorReply = 'Chào bạn! Món này mình vẫn còn nhé. Bạn có thể qua lấy trước 20h tối nay được không?';
-          await Message.create({
-            conversationId: conversation._id,
-            sender: resolvedDonorId,
-            text: donorReply,
-          });
-          await Conversation.findByIdAndUpdate(conversation._id, {
-            'lastMessage.text': donorReply,
-            'lastMessage.sender': resolvedDonorId,
-            'lastMessage.createdAt': new Date(),
-          });
-        } catch (e) {
-          console.log('Auto reply error:', e.message);
-        }
-      }, 1000);
-
       conversation = await Conversation.findById(conversation._id)
         .populate('shareId', 'title images quantity status addressName type')
         .populate('participants', 'name avatar rating email');
