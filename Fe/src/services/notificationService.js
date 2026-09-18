@@ -1,6 +1,17 @@
 import { Platform, Vibration } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { navigate } from '../navigation/navigationRef';
 import notificationApi from '../api/notificationApi';
+import authApi from '../api/authApi';
+
+// Configure how notifications are displayed when app is running (foreground / background)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 // Global callback to display the in-app floating banner
 let inAppNotificationCallback = null;
@@ -10,19 +21,52 @@ export const setInAppNotificationCallback = (cb) => {
 };
 
 /**
- * Request notification permissions safely
+ * Request notification permissions safely & create Android notification channel
  */
 export const requestNotificationPermissions = async () => {
   try {
-    // Attempt Expo Notifications if available and not restricted
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Vét Tủ Thông Báo',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#2ECC71',
+        sound: 'default',
+        enableVibrate: true,
+        showBadge: true,
+      });
+    }
+
+    if (finalStatus !== 'granted') {
+      return false;
+    }
+
+    // Attempt to retrieve and sync Expo Push Token with backend
+    try {
+      const tokenObj = await Notifications.getExpoPushTokenAsync().catch(() => null);
+      if (tokenObj && tokenObj.data) {
+        await authApi.updatePushToken(tokenObj.data).catch(() => {});
+      }
+    } catch (e) {
+      // Ignore in Expo Go if push credentials not configured
+    }
+
     return true;
   } catch (error) {
+    console.log('Error setting up notifications:', error);
     return false;
   }
 };
 
 /**
- * Display an immediate notification (via in-app banner and local alerts)
+ * Display an immediate notification (both in-app floating banner AND Android System Notification)
  */
 export const showDeviceNotification = async ({ title, body, data = {}, type = 'SYSTEM' }) => {
   try {
@@ -37,9 +81,25 @@ export const showDeviceNotification = async ({ title, body, data = {}, type = 'S
       });
     }
 
-    // 2. Subtle vibration
+    // 2. Trigger native Android OS System Notification (Shows on Lock Screen / Home Screen Notification Drawer)
     try {
-      Vibration.vibrate(80);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: title || 'ChefMatch (Vét Tủ)',
+          body: body || '',
+          data: { ...data, type },
+          sound: 'default',
+          channelId: 'default',
+        },
+        trigger: null, // trigger immediately
+      });
+    } catch (notifErr) {
+      console.log('Error scheduling local notification:', notifErr.message);
+    }
+
+    // 3. Subtle vibration
+    try {
+      Vibration.vibrate([0, 150, 100, 150]);
     } catch (e) {}
   } catch (error) {
     console.log('Notification trigger error:', error);
@@ -47,12 +107,37 @@ export const showDeviceNotification = async ({ title, body, data = {}, type = 'S
 };
 
 /**
- * Initialize listeners
+ * Initialize listeners for user tapping notifications from phone lockscreen / status bar
  */
 export const initNotificationListeners = () => {
-  return {
-    remove: () => {},
-  };
+  try {
+    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+      try {
+        const notifData = response?.notification?.request?.content?.data;
+        if (notifData?.conversationId) {
+          navigate('ChatDetail', { conversationId: notifData.conversationId });
+        } else if (notifData?.shareId) {
+          navigate('Community');
+        } else {
+          navigate('Notifications');
+        }
+      } catch (e) {
+        console.log('Error handling notification tap:', e);
+      }
+    });
+
+    return {
+      remove: () => {
+        if (responseListener && responseListener.remove) {
+          responseListener.remove();
+        }
+      },
+    };
+  } catch (err) {
+    return {
+      remove: () => {},
+    };
+  }
 };
 
 // Track notified IDs to avoid duplicate alerts during current session

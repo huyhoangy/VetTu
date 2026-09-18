@@ -3,6 +3,7 @@ const Message = require('../models/Message');
 const FoodShare = require('../models/FoodShare');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const { sendPushToUser, sendPushToUsers } = require('../services/pushNotificationService');
 
 // POST /api/chat/conversation
 // Find or create conversation for a food share between current user and donor
@@ -342,6 +343,17 @@ exports.sendMessage = async (req, res) => {
             },
             isRead: false,
           });
+
+          // Trigger real OS Push Notification
+          sendPushToUser(recipientId, {
+            title: `Tin nhắn từ ${senderUser?.name || 'Hàng xóm'} 💬`,
+            body: text.trim().slice(0, 100),
+            data: {
+              type: 'MESSAGE',
+              conversationId: id,
+              shareId: conversation.shareId,
+            },
+          });
         }
       } catch (notifErr) {
         console.log('Error creating message notification:', notifErr.message);
@@ -402,6 +414,17 @@ exports.confirmClaim = async (req, res) => {
             shareId: conversation.shareId,
           },
           isRead: false,
+        });
+
+        // Trigger real OS Push Notification
+        sendPushToUser(pId, {
+          title: '🎉 Nhận thực phẩm thành công!',
+          body: 'Giao dịch nhận món đã hoàn tất. Cảm ơn bạn đã cùng chung tay chia sẻ chống lãng phí!',
+          data: {
+            type: 'CLAIM_CONFIRMED',
+            conversationId: id,
+            shareId: conversation.shareId,
+          },
         });
       }
     } catch (notifErr) {

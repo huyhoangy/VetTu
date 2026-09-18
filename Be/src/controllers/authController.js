@@ -321,10 +321,36 @@ const updateLocation = async (req, res, next) => {
   }
 };
 
+// @desc    Register or update device Expo Push Token
+// @route   POST /api/auth/push-token
+// @access  Public / Protected
+const updatePushToken = async (req, res, next) => {
+  try {
+    const { pushToken, userId } = req.body;
+    const targetUserId = req.user?._id || req.user?.id || userId;
+
+    if (!pushToken) {
+      return res.status(400).json({ success: false, message: 'Thiếu pushToken' });
+    }
+
+    if (targetUserId) {
+      await User.findByIdAndUpdate(targetUserId, { pushToken });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Đã lưu Push Token thiết bị thành công',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   firebaseLogin,
   getMe,
   updateLocation,
+  updatePushToken,
 };

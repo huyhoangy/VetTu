@@ -6,6 +6,7 @@ const {
   firebaseLogin,
   getMe,
   updateLocation,
+  updatePushToken,
 } = require('../controllers/authController');
 const { protect } = require('../middlewares/authMiddleware');
 
@@ -13,6 +14,7 @@ const { protect } = require('../middlewares/authMiddleware');
 router.post('/register', register);
 router.post('/login', login);
 router.post('/firebase-login', firebaseLogin);
+router.post('/push-token', updatePushToken);
 
 // Protected routes (Require Bearer Token)
 router.get('/me', protect, getMe);

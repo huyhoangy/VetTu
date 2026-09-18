@@ -25,6 +25,11 @@ export const authApi = {
   updateLocation: (coords) => {
     return axiosClient.put('/auth/location', coords);
   },
+
+  // Update Expo Push Token
+  updatePushToken: (pushToken) => {
+    return axiosClient.post('/auth/push-token', { pushToken });
+  },
 };
 
 export default authApi;

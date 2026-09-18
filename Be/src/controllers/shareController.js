@@ -1,6 +1,7 @@
 const FoodShare = require('../models/FoodShare');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const { sendPushToUsers } = require('../services/pushNotificationService');
 
 // Helper to format distance nicely
 const formatDistance = (meters) => {
@@ -336,7 +337,7 @@ exports.createShare = async (req, res) => {
       'name avatar rating'
     );
 
-    // Auto-create notification for other users in the community
+    // Auto-create notification and push to other users in the community
     try {
       const creatorId = newShare.createdBy;
       const otherUsers = await User.find({ _id: { $ne: creatorId } }).limit(20);
@@ -353,6 +354,19 @@ exports.createShare = async (req, res) => {
           isRead: false,
         }));
         await Notification.insertMany(notifDocs);
+
+        // Send Native Push Notification to devices
+        sendPushToUsers(
+          otherUsers.map((u) => u._id),
+          {
+            title: '🎁 Món mới gần bạn!',
+            body: `Hàng xóm vừa chia sẻ: "${title}" (${quantity}) tại ${addressName || 'khu vực lân cận'}.`,
+            data: {
+              shareId: newShare._id,
+              type: 'NEW_SHARE',
+            },
+          }
+        ).catch(() => {});
       }
     } catch (notifErr) {
       console.log('Error creating share notifications:', notifErr.message);
