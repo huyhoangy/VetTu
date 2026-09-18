@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { Colors } from '../../constants/colors';
 import shareApi from '../../api/shareApi';
 import { useAuth } from '../../context/AuthContext';
@@ -35,11 +36,42 @@ const CreateShareScreen = ({ navigation }) => {
   const [quantity, setQuantity] = useState('');
   const [category, setCategory] = useState('VEGGIES');
   const [type, setType] = useState('GIFT'); // GIFT or EXCHANGE
-  const [addressName, setAddressName] = useState('Khu vực Cầu Giấy, Hà Nội');
+  const [addressName, setAddressName] = useState('Đang lấy vị trí...');
+  const [coords, setCoords] = useState({ latitude: 21.031, longitude: 105.782 });
   const [contactPhone, setContactPhone] = useState('');
   const [contactNote, setContactNote] = useState('Có thể qua lấy vào buổi tối sau 18h');
   const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Auto-detect current address on mount
+  React.useEffect(() => {
+    const detectLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          const { latitude, longitude } = loc.coords;
+          setCoords({ latitude, longitude });
+
+          const geocodes = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (geocodes && geocodes.length > 0) {
+            const g = geocodes[0];
+            const parts = [
+              g.street,
+              g.district || g.subregion,
+              g.city || g.region,
+            ].filter(Boolean);
+            if (parts.length > 0) {
+              setAddressName(parts.slice(0, 3).join(', '));
+            }
+          }
+        }
+      } catch (err) {
+        setAddressName('Khu vực của bạn');
+      }
+    };
+    detectLocation();
+  }, []);
 
   // Pick Image from device library
   const handlePickImage = async () => {
@@ -86,8 +118,8 @@ const CreateShareScreen = ({ navigation }) => {
         images: selectedImage
           ? [selectedImage]
           : ['https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=800'],
-        latitude: 21.031 + (Math.random() - 0.5) * 0.005,
-        longitude: 105.782 + (Math.random() - 0.5) * 0.005,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
         userId: user?._id || user?.id,
       };
 

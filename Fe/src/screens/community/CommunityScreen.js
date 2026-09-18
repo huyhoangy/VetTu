@@ -43,25 +43,48 @@ const CommunityScreen = ({ navigation, route }) => {
   const [userLocation, setUserLocation] = useState({
     lng: 105.782,
     lat: 21.031,
-    address: 'Khu vực Cầu Giấy, Hà Nội',
+    address: 'Đang xác định vị trí...',
   });
   const [locationLoading, setLocationLoading] = useState(false);
 
-  // Request GPS permission and get coordinates
+  // Request GPS permission, get coordinates and reverse-geocode real address
   const getCurrentLocation = async () => {
     try {
       setLocationLoading(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setUserLocation((prev) => ({
-          ...prev,
-          lng: loc.coords.longitude,
-          lat: loc.coords.latitude,
-        }));
+        const { longitude, latitude } = loc.coords;
+
+        let addressText = 'Vị trí hiện tại của bạn';
+        try {
+          const geocodes = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (geocodes && geocodes.length > 0) {
+            const g = geocodes[0];
+            const parts = [
+              g.street,
+              g.district || g.subregion,
+              g.city || g.region,
+            ].filter(Boolean);
+            if (parts.length > 0) {
+              addressText = parts.slice(0, 2).join(', ');
+            }
+          }
+        } catch (geoErr) {
+          console.log('Reverse geocode error, using default name');
+        }
+
+        setUserLocation({
+          lng: longitude,
+          lat: latitude,
+          address: addressText,
+        });
+      } else {
+        setUserLocation((prev) => ({ ...prev, address: 'Vị trí mặc định' }));
       }
     } catch (err) {
-      console.log('Location permission skipped, using default');
+      console.log('Location permission skipped or error');
+      setUserLocation((prev) => ({ ...prev, address: 'Vị trí của bạn' }));
     } finally {
       setLocationLoading(false);
     }

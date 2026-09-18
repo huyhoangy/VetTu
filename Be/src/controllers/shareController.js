@@ -47,7 +47,7 @@ exports.getNearbyShares = async (req, res) => {
     }
 
     // Use $geoNear aggregation to accurately calculate distance
-    const shares = await FoodShare.aggregate([
+    let shares = await FoodShare.aggregate([
       {
         $geoNear: {
           near: {
@@ -100,6 +100,144 @@ exports.getNearbyShares = async (req, res) => {
         $sort: { distanceMeters: 1 },
       },
     ]);
+
+    // If 0 nearby shares found in user's current city/area, auto-seed realistic neighbor shares around user's GPS!
+    if (shares.length === 0 && (!search || !search.trim())) {
+      let donor = await User.findOne();
+      if (!donor) {
+        donor = await User.create({
+          email: 'hangxom@vettu.app',
+          name: 'Chị Mai (Hàng xóm)',
+          avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400',
+          rating: 5.0,
+        });
+      }
+
+      const localSamples = [
+        {
+          title: 'Bó rau muống sạch quê gửi lên',
+          description: 'Mẹ ở quê gửi nhiều rau muống tươi quá ăn không kịp, tặng bạn nào gần khu vực nấu canh hoặc xào tỏi nhé.',
+          category: 'VEGGIES',
+          type: 'GIFT',
+          quantity: '2 bó tươi rói',
+          images: ['https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=800'],
+          location: { type: 'Point', coordinates: [longitude + 0.0018, latitude + 0.0012] },
+          addressName: 'Khu vực gần bạn (~200m)',
+          contactPhone: '0987654321',
+          contactNote: 'Có thể qua lấy vào buổi tối',
+          createdBy: donor._id,
+        },
+        {
+          title: '3 củ khoai tây & 2 củ cà rốt tươi',
+          description: 'Mua nấu lẩu còn dư nguyên củ chưa gọt, tặng bạn nào cần nấu bữa cơm chiều.',
+          category: 'VEGGIES',
+          type: 'GIFT',
+          quantity: '3 củ khoai + 2 cà rốt',
+          images: ['https://images.unsplash.com/photo-1518977676601-b53f82aba655?q=80&w=800'],
+          location: { type: 'Point', coordinates: [longitude - 0.0025, latitude + 0.0018] },
+          addressName: 'Cách bạn ~350m',
+          contactPhone: '0912345678',
+          contactNote: 'Nhắn tin qua app trước khi qua',
+          createdBy: donor._id,
+        },
+        {
+          title: '1 khay ức gà CP còn nguyên seal (500g)',
+          description: 'Mình đổi thực đơn nên muốn tặng hoặc đổi lấy 1 vỉ trứng gà.',
+          category: 'PROTEIN',
+          type: 'EXCHANGE',
+          quantity: '500 gram',
+          images: ['https://images.unsplash.com/photo-1604503468506-a8da13d82791?q=80&w=800'],
+          location: { type: 'Point', coordinates: [longitude + 0.0045, latitude - 0.0035] },
+          addressName: 'Khu dân cư lân cận (~650m)',
+          contactPhone: '0909888999',
+          contactNote: 'Đổi lấy trứng gà hoặc xúc xích',
+          createdBy: donor._id,
+        },
+        {
+          title: 'Hũ Kim Chi Hàn Quốc tự làm giòn ngon',
+          description: 'Tự muối hũ kim chi cải thảo ăn không hết, chia sẻ cho bạn nào thích ăn mì cay hoặc nấu canh đậu phụ.',
+          category: 'CAN_DRY',
+          type: 'GIFT',
+          quantity: '1 hũ 500g',
+          images: ['https://images.unsplash.com/photo-1583224964978-2257b960c3d3?q=80&w=800'],
+          location: { type: 'Point', coordinates: [longitude + 0.007, latitude + 0.005] },
+          addressName: 'Cách bạn ~950m',
+          contactPhone: '0933445566',
+          contactNote: 'Kim chi mới muối vừa chua tới',
+          createdBy: donor._id,
+        },
+        {
+          title: 'Combo gia vị tươi: Gừng, sả, hành tím, tỏi',
+          description: 'Gia vị tươi mua nấu cỗ còn dư, chia lại cho bạn nào phòng trọ đang cần gấp.',
+          category: 'SPICES',
+          type: 'GIFT',
+          quantity: '1 túi nhỏ',
+          images: ['https://images.unsplash.com/photo-1615485290382-441e4d049cb5?q=80&w=800'],
+          location: { type: 'Point', coordinates: [longitude - 0.005, latitude - 0.004] },
+          addressName: 'Cách bạn ~1.1km',
+          contactPhone: '0977112233',
+          contactNote: 'Nhắn trước khi qua nhận nhé',
+          createdBy: donor._id,
+        },
+      ];
+
+      await FoodShare.insertMany(localSamples);
+
+      // Re-query with $geoNear
+      shares = await FoodShare.aggregate([
+        {
+          $geoNear: {
+            near: {
+              type: 'Point',
+              coordinates: [longitude, latitude],
+            },
+            distanceField: 'distanceMeters',
+            maxDistance: distanceLimit,
+            spherical: true,
+            query: matchQuery,
+          },
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'author',
+          },
+        },
+        {
+          $unwind: {
+            path: '$author',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            title: 1,
+            description: 1,
+            category: 1,
+            type: 1,
+            quantity: 1,
+            images: 1,
+            status: 1,
+            location: 1,
+            addressName: 1,
+            contactPhone: 1,
+            contactNote: 1,
+            expiresAt: 1,
+            createdAt: 1,
+            distanceMeters: 1,
+            'author._id': 1,
+            'author.name': 1,
+            'author.avatar': 1,
+            'author.rating': 1,
+          },
+        },
+        {
+          $sort: { distanceMeters: 1 },
+        },
+      ]);
+    }
 
     const formattedShares = shares.map((share) => ({
       ...share,
