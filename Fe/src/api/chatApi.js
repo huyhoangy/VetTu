@@ -23,13 +23,15 @@ export const chatApi = {
   },
 
   // DELETE /api/chat/conversations/:id
-  deleteConversation: async (conversationId) => {
-    return await axiosClient.delete(`/chat/conversations/${conversationId}`);
+  deleteConversation: async (conversationId, userId) => {
+    const url = userId ? `/chat/conversations/${conversationId}?userId=${userId}` : `/chat/conversations/${conversationId}`;
+    return await axiosClient.delete(url);
   },
 
   // GET /api/chat/conversations/:id/messages
-  getMessages: async (conversationId) => {
-    return await axiosClient.get(`/chat/conversations/${conversationId}/messages`);
+  getMessages: async (conversationId, userId) => {
+    const url = userId ? `/chat/conversations/${conversationId}/messages?userId=${userId}` : `/chat/conversations/${conversationId}/messages`;
+    return await axiosClient.get(url);
   },
 
   // POST /api/chat/conversations/:id/messages

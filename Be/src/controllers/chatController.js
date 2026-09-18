@@ -95,6 +95,12 @@ exports.getOrCreateConversation = async (req, res) => {
       conversation = await Conversation.findById(conversation._id)
         .populate('shareId', 'title images quantity status addressName type')
         .populate('participants', 'name avatar rating email');
+    } else {
+      // If conversation exists but was marked as deleted for this user, restore it
+      if (conversation.deletedFor && conversation.deletedFor.some((u) => u.toString() === currentUserId.toString())) {
+        conversation.deletedFor = conversation.deletedFor.filter((u) => u.toString() !== currentUserId.toString());
+        await conversation.save();
+      }
     }
 
     res.status(200).json({
@@ -112,28 +118,23 @@ exports.getOrCreateConversation = async (req, res) => {
 };
 
 // GET /api/chat/conversations
-// Get all conversation history for the current user
+// Get all conversation history for the current user (excluding deleted ones for this user)
 exports.getUserConversations = async (req, res) => {
   try {
     const currentUserId = req.user?._id || req.query.userId;
 
     let query = {};
     if (currentUserId) {
-      query = { participants: currentUserId };
+      query = {
+        participants: currentUserId,
+        deletedFor: { $ne: currentUserId },
+      };
     }
 
     let conversations = await Conversation.find(query)
       .populate('shareId', 'title images quantity status addressName type')
       .populate('participants', 'name avatar rating email')
       .sort({ updatedAt: -1 });
-
-    // Fallback: if no conversations for this user, return all recent conversations
-    if (conversations.length === 0) {
-      conversations = await Conversation.find()
-        .populate('shareId', 'title images quantity status addressName type')
-        .populate('participants', 'name avatar rating email')
-        .sort({ updatedAt: -1 });
-    }
 
     res.status(200).json({
       success: true,
@@ -178,24 +179,62 @@ exports.getConversationById = async (req, res) => {
 };
 
 // DELETE /api/chat/conversations/:id
-// Delete a conversation and its messages
+// Delete a conversation ONLY for the requesting user (preserving for the other participant)
 exports.deleteConversation = async (req, res) => {
   try {
     const { id } = req.params;
+    const currentUserId = req.user?._id || req.query.userId || req.body?.userId;
 
-    await Message.deleteMany({ conversationId: id });
-    const deleted = await Conversation.findByIdAndDelete(id);
-
-    if (!deleted) {
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
       return res.status(404).json({
         success: false,
         message: 'Không tìm thấy đoạn hội thoại để xóa',
       });
     }
 
+    if (currentUserId) {
+      const now = new Date();
+
+      // Update clearedHistory for this user
+      if (!conversation.clearedHistory) conversation.clearedHistory = [];
+      const existingClearedIdx = conversation.clearedHistory.findIndex(
+        (c) => c.user?.toString() === currentUserId.toString()
+      );
+      if (existingClearedIdx >= 0) {
+        conversation.clearedHistory[existingClearedIdx].clearedAt = now;
+      } else {
+        conversation.clearedHistory.push({ user: currentUserId, clearedAt: now });
+      }
+
+      // Add to deletedFor
+      if (!conversation.deletedFor) conversation.deletedFor = [];
+      if (!conversation.deletedFor.some((u) => u.toString() === currentUserId.toString())) {
+        conversation.deletedFor.push(currentUserId);
+      }
+
+      // If ALL participants have deleted this conversation, purge it completely
+      const allDeleted =
+        conversation.participants.length > 0 &&
+        conversation.participants.every((p) =>
+          conversation.deletedFor.some((d) => d.toString() === p.toString())
+        );
+
+      if (allDeleted) {
+        await Message.deleteMany({ conversationId: id });
+        await Conversation.findByIdAndDelete(id);
+      } else {
+        await conversation.save();
+      }
+    } else {
+      // Fallback if no user identifier provided
+      await Message.deleteMany({ conversationId: id });
+      await Conversation.findByIdAndDelete(id);
+    }
+
     res.status(200).json({
       success: true,
-      message: 'Đã xóa lịch sử đoạn chat thành công',
+      message: 'Đã xóa lịch sử đoạn chat của bạn thành công',
     });
   } catch (error) {
     console.error('Error deleting conversation:', error);
@@ -211,9 +250,23 @@ exports.deleteConversation = async (req, res) => {
 exports.getConversationMessages = async (req, res) => {
   try {
     const { id } = req.params;
+    const currentUserId = req.user?._id || req.query.userId;
 
-    const conversation = await Conversation.findById(id).select('status shareId');
-    const messages = await Message.find({ conversationId: id })
+    const conversation = await Conversation.findById(id).select('status shareId clearedHistory');
+    
+    let messageQuery = { conversationId: id };
+
+    // If current user previously cleared history, only show messages after their clearedAt timestamp
+    if (currentUserId && conversation?.clearedHistory?.length > 0) {
+      const userCleared = conversation.clearedHistory.find(
+        (c) => c.user?.toString() === currentUserId.toString()
+      );
+      if (userCleared && userCleared.clearedAt) {
+        messageQuery.createdAt = { $gt: userCleared.clearedAt };
+      }
+    }
+
+    const messages = await Message.find(messageQuery)
       .populate('sender', 'name avatar')
       .sort({ createdAt: 1 });
 
@@ -256,14 +309,19 @@ exports.sendMessage = async (req, res) => {
       text: text.trim(),
     });
 
-    await Conversation.findByIdAndUpdate(id, {
-      lastMessage: {
+    // Un-delete conversation for all participants when a new message is sent
+    const conversation = await Conversation.findById(id);
+    if (conversation) {
+      conversation.lastMessage = {
         text: text.trim(),
         sender: currentUserId,
         createdAt: new Date(),
         isRead: false,
-      },
-    });
+      };
+      // Pull all participants from deletedFor so both see new message in their list
+      conversation.deletedFor = [];
+      await conversation.save();
+    }
 
     const populated = await Message.findById(newMessage._id).populate('sender', 'name avatar');
 

@@ -67,7 +67,7 @@ const ConversationsListScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const res = await chatApi.deleteConversation(convId);
+              const res = await chatApi.deleteConversation(convId, currentUserId);
               if (res.success) {
                 setConversations((prev) => prev.filter((c) => c._id !== convId));
               }

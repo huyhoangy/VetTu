@@ -42,7 +42,7 @@ const ChatScreen = ({ navigation, route }) => {
   const fetchMessages = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const res = await chatApi.getMessages(conversationId);
+      const res = await chatApi.getMessages(conversationId, currentUserId);
       if (res.success && res.data) {
         setMessages(res.data);
         if (res.conversationStatus) {
@@ -63,7 +63,7 @@ const ChatScreen = ({ navigation, route }) => {
       fetchMessages(true);
     }, 2500);
     return () => clearInterval(interval);
-  }, [conversationId]);
+  }, [conversationId, currentUserId]);
 
   const handleSend = async (customText) => {
     const textToSend = (customText || inputText).trim();
@@ -115,7 +115,7 @@ const ChatScreen = ({ navigation, route }) => {
   const handleDeleteConversation = () => {
     Alert.alert(
       'Xóa đoạn chat 🗑️',
-      'Bạn có chắc chắn muốn xóa toàn bộ lịch sử tin nhắn của cuộc trò chuyện này không?',
+      'Bạn có chắc chắn muốn xóa toàn bộ lịch sử tin nhắn của cuộc trò chuyện này ở phía bạn không?',
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -123,9 +123,9 @@ const ChatScreen = ({ navigation, route }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const res = await chatApi.deleteConversation(conversationId);
+              const res = await chatApi.deleteConversation(conversationId, currentUserId);
               if (res.success) {
-                Alert.alert('Đã xóa', 'Lịch sử đoạn chat đã được xóa thành công.');
+                Alert.alert('Đã xóa', 'Lịch sử đoạn chat đã được xóa thành công khỏi máy của bạn.');
                 navigation.goBack();
               }
             } catch (error) {

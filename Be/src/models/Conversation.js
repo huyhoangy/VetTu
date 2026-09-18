@@ -25,6 +25,18 @@ const conversationSchema = new mongoose.Schema(
       enum: ['ACTIVE', 'RESERVED', 'COMPLETED', 'CANCELLED'],
       default: 'ACTIVE',
     },
+    deletedFor: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    clearedHistory: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        clearedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,
