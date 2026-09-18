@@ -157,12 +157,7 @@ const HomeScreen = ({ navigation }) => {
 
         {/* Featured / Daily Recipes Section */}
         <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>🔥 Gợi ý món ngon hôm nay</Text>
-            <View style={styles.dailyBadge}>
-              <Text style={styles.dailyBadgeText}>Tự động đổi mỗi ngày</Text>
-            </View>
-          </View>
+          <Text style={styles.sectionTitle}>🔥 Gợi ý món ngon hôm nay</Text>
           <TouchableOpacity
             style={styles.refreshButton}
             onPress={handleRefreshFeatured}
