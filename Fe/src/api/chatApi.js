@@ -28,6 +28,12 @@ export const chatApi = {
     return await axiosClient.delete(url);
   },
 
+  // DELETE /api/chat/conversations/delete-all
+  deleteAllConversations: async (userId) => {
+    const url = userId ? `/chat/conversations/delete-all?userId=${userId}` : '/chat/conversations/delete-all';
+    return await axiosClient.delete(url);
+  },
+
   // GET /api/chat/conversations/:id/messages
   getMessages: async (conversationId, userId) => {
     const url = userId ? `/chat/conversations/${conversationId}/messages?userId=${userId}` : `/chat/conversations/${conversationId}/messages`;

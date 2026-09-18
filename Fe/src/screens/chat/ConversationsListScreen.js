@@ -80,6 +80,35 @@ const ConversationsListScreen = ({ navigation }) => {
     );
   };
 
+  const handleDeleteAllConversations = () => {
+    if (conversations.length === 0) {
+      Alert.alert('Thông báo', 'Hộp thư tin nhắn hiện đang trống.');
+      return;
+    }
+
+    Alert.alert(
+      'Xóa tất cả tin nhắn 🗑️',
+      'Bạn có chắc chắn muốn xóa toàn bộ lịch sử các đoạn chat không? Hành động này sẽ dọn sạch danh sách tin nhắn của bạn mà không ảnh hưởng phía người nhận.',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa hết',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await chatApi.deleteAllConversations(currentUserId);
+              if (res.success) {
+                setConversations([]);
+              }
+            } catch (error) {
+              Alert.alert('Lỗi', 'Không thể xóa tất cả đoạn hội thoại');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -91,8 +120,16 @@ const ConversationsListScreen = ({ navigation }) => {
         >
           <Ionicons name="arrow-back" size={24} color={Colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tin nhắn & Nhận món 💬</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Tin nhắn 💬</Text>
+
+        <TouchableOpacity
+          style={styles.deleteAllBtn}
+          onPress={handleDeleteAllConversations}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trash-outline" size={15} color="#EF4444" />
+          <Text style={styles.deleteAllText}>Xóa hết</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Main List Content */}
@@ -248,6 +285,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: Colors.text,
+  },
+  deleteAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  deleteAllText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EF4444',
   },
   scrollContainer: {
     flex: 1,

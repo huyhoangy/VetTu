@@ -12,6 +12,9 @@ router.get('/conversations', chatController.getUserConversations);
 // Get single conversation details
 router.get('/conversations/:id', chatController.getConversationById);
 
+// Delete all conversations for current user
+router.delete('/conversations/delete-all', chatController.deleteAllConversations);
+
 // Delete conversation and messages history
 router.delete('/conversations/:id', chatController.deleteConversation);
 

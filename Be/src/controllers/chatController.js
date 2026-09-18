@@ -243,6 +243,70 @@ exports.deleteConversation = async (req, res) => {
   }
 };
 
+// DELETE /api/chat/conversations/delete-all
+// Delete all conversations for current user (preserving for partner if they have not deleted)
+exports.deleteAllConversations = async (req, res) => {
+  try {
+    const currentUserId = req.user?._id || req.query.userId || req.body?.userId;
+
+    if (!currentUserId) {
+      return res.status(400).json({ success: false, message: 'Thiếu thông tin người dùng' });
+    }
+
+    const conversations = await Conversation.find({
+      participants: currentUserId,
+      deletedFor: { $ne: currentUserId },
+    });
+
+    const now = new Date();
+
+    for (const conv of conversations) {
+      // Update clearedHistory for this user
+      if (!conv.clearedHistory) conv.clearedHistory = [];
+      const existingClearedIdx = conv.clearedHistory.findIndex(
+        (c) => c.user?.toString() === currentUserId.toString()
+      );
+      if (existingClearedIdx >= 0) {
+        conv.clearedHistory[existingClearedIdx].clearedAt = now;
+      } else {
+        conv.clearedHistory.push({ user: currentUserId, clearedAt: now });
+      }
+
+      // Add to deletedFor
+      if (!conv.deletedFor) conv.deletedFor = [];
+      if (!conv.deletedFor.some((u) => u.toString() === currentUserId.toString())) {
+        conv.deletedFor.push(currentUserId);
+      }
+
+      // Check if all participants deleted
+      const allDeleted =
+        conv.participants.length > 0 &&
+        conv.participants.every((p) =>
+          conv.deletedFor.some((d) => d.toString() === p.toString())
+        );
+
+      if (allDeleted) {
+        await Message.deleteMany({ conversationId: conv._id });
+        await Conversation.findByIdAndDelete(conv._id);
+      } else {
+        await conv.save();
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Đã xóa tất cả các đoạn chat thành công',
+    });
+  } catch (error) {
+    console.error('Error in deleteAllConversations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể xóa tất cả đoạn hội thoại',
+      error: error.message,
+    });
+  }
+};
+
 // GET /api/chat/conversations/:id/messages
 exports.getConversationMessages = async (req, res) => {
   try {
