@@ -17,6 +17,7 @@ import * as Location from 'expo-location';
 import { Colors } from '../../constants/colors';
 import shareApi from '../../api/shareApi';
 import { useAuth } from '../../context/AuthContext';
+import { uploadImageToCloudinary } from '../../api/cloudinaryApi';
 
 const CATEGORIES = [
   { id: 'VEGGIES', title: '🥦 Rau củ quả' },
@@ -42,6 +43,7 @@ const CreateShareScreen = ({ navigation }) => {
   const [contactNote, setContactNote] = useState('Có thể qua lấy vào buổi tối sau 18h');
   const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [uploadingText, setUploadingText] = useState('Đăng bài chia sẻ');
 
   // Auto-detect current address on mount
   React.useEffect(() => {
@@ -85,7 +87,7 @@ const CreateShareScreen = ({ navigation }) => {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.7,
+      quality: 0.8,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -106,6 +108,23 @@ const CreateShareScreen = ({ navigation }) => {
 
     try {
       setLoading(true);
+      let finalImageUrl = selectedImage;
+
+      // Upload directly to Cloudinary if a local device image was picked
+      if (selectedImage && !selectedImage.startsWith('http')) {
+        setUploadingText('Đang tải ảnh lên Cloudinary ☁️...');
+        try {
+          const cloudUrl = await uploadImageToCloudinary(selectedImage);
+          if (cloudUrl) {
+            finalImageUrl = cloudUrl;
+          }
+        } catch (uploadErr) {
+          console.warn('Cloudinary upload warning:', uploadErr.message);
+          // If upload fails, fall back to default image or local image
+        }
+      }
+
+      setUploadingText('Đang tạo bài viết...');
       const shareData = {
         title: title.trim(),
         description: description.trim(),
@@ -115,8 +134,8 @@ const CreateShareScreen = ({ navigation }) => {
         addressName: addressName.trim(),
         contactPhone: contactPhone.trim(),
         contactNote: contactNote.trim(),
-        images: selectedImage
-          ? [selectedImage]
+        images: finalImageUrl
+          ? [finalImageUrl]
           : ['https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=800'],
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -125,9 +144,10 @@ const CreateShareScreen = ({ navigation }) => {
 
       const res = await shareApi.createShare(shareData);
       setLoading(false);
+      setUploadingText('Đăng bài chia sẻ');
 
       if (res.success) {
-        Alert.alert('Thành công 🎉', 'Bài chia sẻ thực phẩm của bạn đã được đăng lên bản tin!', [
+        Alert.alert('Thành công 🎉', 'Bài chia sẻ thực phẩm và ảnh Cloudinary đã được đăng lên bản tin!', [
           {
             text: 'Xem ngay',
             onPress: () => navigation.goBack(),
@@ -136,6 +156,7 @@ const CreateShareScreen = ({ navigation }) => {
       }
     } catch (error) {
       setLoading(false);
+      setUploadingText('Đăng bài chia sẻ');
       Alert.alert('Lỗi', 'Không thể tạo bài chia sẻ, vui lòng thử lại!');
     }
   };
@@ -295,7 +316,10 @@ const CreateShareScreen = ({ navigation }) => {
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator size="small" color="#FFFFFF" />
+              <Text style={styles.submitButtonText}>{uploadingText}</Text>
+            </View>
           ) : (
             <>
               <Ionicons name="send" size={18} color="#FFFFFF" />
