@@ -52,13 +52,19 @@ const RecipeDetailScreen = ({ route, navigation }) => {
   const handleAskNeighbor = (ingredientName) => {
     Alert.alert(
       'Tìm quanh xóm 🏡',
-      `Bạn đang thiếu "${ingredientName}"? Tính năng tìm hàng xóm chia sẻ nguyên liệu sẽ tự động mở trong Tab Cộng Đồng!`,
+      `Bạn đang thiếu "${ingredientName}"? Khám phá ngay xem có hàng xóm nào quanh bạn đang chia sẻ không nhé!`,
       [
         { text: 'Để sau', style: 'cancel' },
         {
           text: 'Tìm ngay',
           onPress: () => {
-            navigation.navigate('MainTabs', { screen: 'Community' });
+            navigation.navigate('MainTabs', {
+              screen: 'Community',
+              params: {
+                screen: 'CommunityMain',
+                params: { initialSearch: ingredientName },
+              },
+            });
           },
         },
       ]

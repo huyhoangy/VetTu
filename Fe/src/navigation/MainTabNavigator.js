@@ -3,9 +3,9 @@ import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import HomeScreen from '../screens/home/HomeScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import HomeStackNavigator from './HomeStackNavigator';
+import CommunityStackNavigator from './CommunityStackNavigator';
 import { Colors } from '../constants/colors';
 
 const Tab = createBottomTabNavigator();
@@ -60,7 +60,7 @@ const MainTabNavigator = () => {
       />
       <Tab.Screen
         name="Community"
-        component={HomeScreen}
+        component={CommunityStackNavigator}
         options={{ tabBarLabel: 'Cộng đồng' }}
       />
       <Tab.Screen
