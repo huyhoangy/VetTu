@@ -197,238 +197,241 @@ const CookingHistoryScreen = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Chef Achievement Banner */}
-        <View style={styles.badgeBanner}>
-          <View style={styles.badgeBannerLeft}>
-            <View style={styles.badgeIconCircle}>
-              <Ionicons name="trophy" size={24} color="#F59E0B" />
-            </View>
-            <View style={styles.badgeTextCol}>
-              <Text style={styles.badgeLabel}>Danh hiệu đầu bếp</Text>
-              <Text style={styles.badgeValue}>{stats.chefBadge}</Text>
-            </View>
-          </View>
-          <View style={styles.badgePill}>
-            <Ionicons name="flame" size={14} color="#EA580C" />
-            <Text style={styles.badgePillText}>{stats.totalCooked} món</Text>
-          </View>
-        </View>
-
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="restaurant" size={20} color="#3B82F6" />
-            </View>
-            <Text style={styles.statNum}>{stats.totalCooked}</Text>
-            <Text style={styles.statDesc}>Món đã nấu</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="timer" size={20} color="#10B981" />
-            </View>
-            <Text style={styles.statNum}>{stats.totalMinutes}</Text>
-            <Text style={styles.statDesc}>Phút vào bếp</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: '#FFFBEB' }]}>
-              <Ionicons name="star" size={20} color="#F59E0B" />
-            </View>
-            <Text style={styles.statNum}>{stats.averageRating}</Text>
-            <Text style={styles.statDesc}>⭐ Đánh giá TB</Text>
-          </View>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={18} color={Colors.textSecondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Tìm món đã nấu, ghi chú..."
-            placeholderTextColor={Colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Filter Pills */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
-        >
-          {FILTER_TAGS.map((tag) => {
-            const isSelected = activeFilter === tag.id;
-            return (
-              <TouchableOpacity
-                key={tag.id}
-                style={[styles.filterPill, isSelected && styles.filterPillActive]}
-                onPress={() => setActiveFilter(tag.id)}
-                activeOpacity={0.75}
-              >
-                <Text
-                  style={[styles.filterPillText, isSelected && styles.filterPillTextActive]}
-                >
-                  {tag.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
         {/* Content Body */}
         {loading && !refreshing ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color={Colors.primary} />
             <Text style={styles.loadingText}>Đang tải lịch sử nấu ăn...</Text>
           </View>
-        ) : filteredHistory.length === 0 ? (
+        ) : historyList.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconBox}>
               <Ionicons name="restaurant-outline" size={48} color={Colors.primaryLight} />
             </View>
-            <Text style={styles.emptyTitle}>
-              {searchQuery || activeFilter !== 'ALL'
-                ? 'Không tìm thấy nhật ký phù hợp'
-                : 'Chưa có nhật ký nấu ăn nào'}
-            </Text>
+            <Text style={styles.emptyTitle}>Chưa có món ăn nào được ghi nhận</Text>
             <Text style={styles.emptyDesc}>
-              {searchQuery || activeFilter !== 'ALL'
-                ? 'Hãy thử thay đổi từ khóa tìm kiếm hoặc bộ lọc phía trên.'
-                : 'Sau khi nấu xong bất kỳ món ăn nào từ Vét Tủ, hãy bấm "Hoàn thành nấu ăn" để ghi lại hành trình bếp núc của bạn!'}
+              Sau khi bạn nấu xong bất kỳ món ăn nào từ công thức của Vét Tủ, hãy bấm "Hoàn thành nấu ăn" để ghi lại hành trình bếp núc của bạn nhé!
             </Text>
 
-            {!searchQuery && activeFilter === 'ALL' && (
-              <TouchableOpacity
-                style={styles.exploreBtn}
-                onPress={() => navigation.navigate('HomeTab')}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="compass-outline" size={20} color="#FFFFFF" />
-                <Text style={styles.exploreBtnText}>Khám phá công thức ngay</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.exploreBtn}
+              onPress={() => navigation.navigate('HomeTab')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="compass-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.exploreBtnText}>Khám phá công thức ngay</Text>
+            </TouchableOpacity>
           </View>
         ) : (
-          filteredHistory.map((item) => {
-            const title = item.recipeSnapshot?.title || item.recipe?.title || 'Món ăn Vét Tủ';
-            const imageUrl =
-              item.recipeSnapshot?.imageUrl ||
-              item.recipe?.imageUrl ||
-              'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800';
-            const totalTime =
-              (item.recipeSnapshot?.prepTimeMinutes || item.recipe?.prepTimeMinutes || 0) +
-              (item.recipeSnapshot?.cookTimeMinutes || item.recipe?.cookTimeMinutes || 0);
-            const difficulty =
-              item.recipeSnapshot?.difficulty || item.recipe?.difficulty || 'EASY';
-
-            return (
-              <View key={item._id} style={styles.historyCard}>
-                {/* Top Card Header */}
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardDateRow}>
-                    <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-                    <Text style={styles.cardDate}>{formatDate(item.cookedAt)}</Text>
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.deleteBtn}
-                    onPress={() => handleDeleteEntry(item)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="trash-outline" size={16} color="#9CA3AF" />
-                  </TouchableOpacity>
+          <>
+            {/* Chef Achievement Banner */}
+            <View style={styles.badgeBanner}>
+              <View style={styles.badgeBannerLeft}>
+                <View style={styles.badgeIconCircle}>
+                  <Ionicons name="trophy" size={24} color="#F59E0B" />
                 </View>
-
-                {/* Main Recipe Info Row */}
-                <View style={styles.recipeRow}>
-                  <Image source={{ uri: imageUrl }} style={styles.recipeThumbnail} />
-                  <View style={styles.recipeDetails}>
-                    <Text style={styles.cardTitle} numberOfLines={2}>
-                      {title}
-                    </Text>
-
-                    {/* Star Rating Display */}
-                    <View style={styles.starRow}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Ionicons
-                          key={`star-${star}`}
-                          name={star <= (item.rating || 5) ? 'star' : 'star-outline'}
-                          size={15}
-                          color="#F59E0B"
-                        />
-                      ))}
-                      <Text style={styles.ratingLabel}>
-                        {item.rating === 5
-                          ? 'Tuyệt đỉnh'
-                          : item.rating === 4
-                          ? 'Rất ngon'
-                          : item.rating === 3
-                          ? 'Vừa miệng'
-                          : 'Cần cải thiện'}
-                      </Text>
-                    </View>
-
-                    {/* Metadata Badges */}
-                    <View style={styles.metaRow}>
-                      <View style={styles.metaItem}>
-                        <Ionicons name="time-outline" size={13} color={Colors.textSecondary} />
-                        <Text style={styles.metaText}>{totalTime} phút</Text>
-                      </View>
-                      <View style={styles.metaDivider} />
-                      <View style={styles.metaItem}>
-                        <Ionicons name="people-outline" size={13} color={Colors.textSecondary} />
-                        <Text style={styles.metaText}>{item.servingsCooked || 2} người</Text>
-                      </View>
-                      <View style={styles.metaDivider} />
-                      <View style={styles.diffBadge}>
-                        <Text style={styles.diffText}>
-                          {difficulty === 'EASY'
-                            ? 'Dễ'
-                            : difficulty === 'MEDIUM'
-                            ? 'Vừa'
-                            : 'Khó'}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
+                <View style={styles.badgeTextCol}>
+                  <Text style={styles.badgeLabel}>Danh hiệu đầu bếp</Text>
+                  <Text style={styles.badgeValue}>{stats.chefBadge}</Text>
                 </View>
-
-                {/* Chef Notes / Review Bubble if exists */}
-                {Boolean(item.notes) && (
-                  <View style={styles.noteBubble}>
-                    <Ionicons name="chatbubble-ellipses-outline" size={14} color="#D97706" />
-                    <Text style={styles.noteText}>"{item.notes}"</Text>
-                  </View>
-                )}
-
-                {/* Action CTA: Re-cook this dish */}
-                <TouchableOpacity
-                  style={styles.recookBtn}
-                  onPress={() => {
-                    const targetRecipeId = item.recipe?._id || item.recipe || item._id;
-                    navigation.navigate('RecipeDetail', {
-                      recipeId: targetRecipeId,
-                      recipe: item.recipe || item.recipeSnapshot,
-                    });
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="reload" size={14} color={Colors.primary} />
-                  <Text style={styles.recookBtnText}>Nấu lại món này</Text>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
-                </TouchableOpacity>
               </View>
-            );
-          })
+              <View style={styles.badgePill}>
+                <Ionicons name="flame" size={14} color="#EA580C" />
+                <Text style={styles.badgePillText}>{stats.totalCooked} món</Text>
+              </View>
+            </View>
+
+            {/* Stats Grid */}
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <View style={[styles.statIconBox, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="restaurant" size={20} color="#3B82F6" />
+                </View>
+                <Text style={styles.statNum}>{stats.totalCooked}</Text>
+                <Text style={styles.statDesc}>Món đã nấu</Text>
+              </View>
+
+              <View style={styles.statCard}>
+                <View style={[styles.statIconBox, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="timer" size={20} color="#10B981" />
+                </View>
+                <Text style={styles.statNum}>{stats.totalMinutes}</Text>
+                <Text style={styles.statDesc}>Phút vào bếp</Text>
+              </View>
+
+              <View style={styles.statCard}>
+                <View style={[styles.statIconBox, { backgroundColor: '#FFFBEB' }]}>
+                  <Ionicons name="star" size={20} color="#F59E0B" />
+                </View>
+                <Text style={styles.statNum}>{stats.averageRating}</Text>
+                <Text style={styles.statDesc}>⭐ Đánh giá TB</Text>
+              </View>
+            </View>
+
+            {/* Search Bar */}
+            <View style={styles.searchBar}>
+              <Ionicons name="search-outline" size={18} color={Colors.textSecondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Tìm món đã nấu, ghi chú..."
+                placeholderTextColor={Colors.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Filter Pills */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScroll}
+            >
+              {FILTER_TAGS.map((tag) => {
+                const isSelected = activeFilter === tag.id;
+                return (
+                  <TouchableOpacity
+                    key={tag.id}
+                    style={[styles.filterPill, isSelected && styles.filterPillActive]}
+                    onPress={() => setActiveFilter(tag.id)}
+                    activeOpacity={0.75}
+                  >
+                    <Text
+                      style={[styles.filterPillText, isSelected && styles.filterPillTextActive]}
+                    >
+                      {tag.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {filteredHistory.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>Không tìm thấy món phù hợp</Text>
+                <Text style={styles.emptyDesc}>
+                  Hãy thử thay đổi từ khóa tìm kiếm hoặc chọn bộ lọc "Tất cả".
+                </Text>
+              </View>
+            ) : (
+              filteredHistory.map((item) => {
+                const title = item.recipeSnapshot?.title || item.recipe?.title || 'Món ăn Vét Tủ';
+                const imageUrl =
+                  item.recipeSnapshot?.imageUrl ||
+                  item.recipe?.imageUrl ||
+                  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800';
+                const totalTime =
+                  (item.recipeSnapshot?.prepTimeMinutes || item.recipe?.prepTimeMinutes || 0) +
+                  (item.recipeSnapshot?.cookTimeMinutes || item.recipe?.cookTimeMinutes || 0);
+                const difficulty =
+                  item.recipeSnapshot?.difficulty || item.recipe?.difficulty || 'EASY';
+
+                return (
+                  <View key={item._id} style={styles.historyCard}>
+                    {/* Top Card Header */}
+                    <View style={styles.cardHeader}>
+                      <View style={styles.cardDateRow}>
+                        <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
+                        <Text style={styles.cardDate}>{formatDate(item.cookedAt)}</Text>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.deleteBtn}
+                        onPress={() => handleDeleteEntry(item)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#9CA3AF" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Main Recipe Info Row */}
+                    <View style={styles.recipeRow}>
+                      <Image source={{ uri: imageUrl }} style={styles.recipeThumbnail} />
+                      <View style={styles.recipeDetails}>
+                        <Text style={styles.cardTitle} numberOfLines={2}>
+                          {title}
+                        </Text>
+
+                        {/* Star Rating Display */}
+                        <View style={styles.starRow}>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Ionicons
+                              key={`star-${star}`}
+                              name={star <= (item.rating || 5) ? 'star' : 'star-outline'}
+                              size={15}
+                              color="#F59E0B"
+                            />
+                          ))}
+                          <Text style={styles.ratingLabel}>
+                            {item.rating === 5
+                              ? 'Tuyệt đỉnh'
+                              : item.rating === 4
+                              ? 'Rất ngon'
+                              : item.rating === 3
+                              ? 'Vừa miệng'
+                              : 'Cần cải thiện'}
+                          </Text>
+                        </View>
+
+                        {/* Metadata Badges */}
+                        <View style={styles.metaRow}>
+                          <View style={styles.metaItem}>
+                            <Ionicons name="time-outline" size={13} color={Colors.textSecondary} />
+                            <Text style={styles.metaText}>{totalTime} phút</Text>
+                          </View>
+                          <View style={styles.metaDivider} />
+                          <View style={styles.metaItem}>
+                            <Ionicons name="people-outline" size={13} color={Colors.textSecondary} />
+                            <Text style={styles.metaText}>{item.servingsCooked || 2} người</Text>
+                          </View>
+                          <View style={styles.metaDivider} />
+                          <View style={styles.diffBadge}>
+                            <Text style={styles.diffText}>
+                              {difficulty === 'EASY'
+                                ? 'Dễ'
+                                : difficulty === 'MEDIUM'
+                                ? 'Vừa'
+                                : 'Khó'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Chef Notes / Review Bubble if exists */}
+                    {Boolean(item.notes) && (
+                      <View style={styles.noteBubble}>
+                        <Ionicons name="chatbubble-ellipses-outline" size={14} color="#D97706" />
+                        <Text style={styles.noteText}>"{item.notes}"</Text>
+                      </View>
+                    )}
+
+                    {/* Action CTA: Re-cook this dish */}
+                    <TouchableOpacity
+                      style={styles.recookBtn}
+                      onPress={() => {
+                        const targetRecipeId = item.recipe?._id || item.recipe || item._id;
+                        navigation.navigate('RecipeDetail', {
+                          recipeId: targetRecipeId,
+                          recipe: item.recipe || item.recipeSnapshot,
+                        });
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="reload" size={14} color={Colors.primary} />
+                      <Text style={styles.recookBtnText}>Nấu lại món này</Text>
+                      <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })
+            )}
+          </>
         )}
       </ScrollView>
     </View>
