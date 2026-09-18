@@ -12,8 +12,9 @@ export const recipeApi = {
   },
 
   // GET /api/recipes/:id
-  getRecipeById: (id) => {
-    return axiosClient.get(`/recipes/${id}`);
+  getRecipeById: (id, title = '') => {
+    const url = title ? `/recipes/${id}?title=${encodeURIComponent(title)}` : `/recipes/${id}`;
+    return axiosClient.get(url);
   },
 
   // POST /api/recipes/:id/favorite

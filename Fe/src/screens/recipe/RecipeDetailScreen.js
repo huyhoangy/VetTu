@@ -35,8 +35,15 @@ const RecipeDetailScreen = ({ route, navigation }) => {
 
   const currentUserId = user?._id || user?.id;
 
+  const isPartialRecipe =
+    !initialRecipe ||
+    !Array.isArray(initialRecipe.instructions) ||
+    initialRecipe.instructions.length === 0 ||
+    !Array.isArray(initialRecipe.ingredients) ||
+    initialRecipe.ingredients.length === 0;
+
   const [recipe, setRecipe] = useState(initialRecipe || null);
-  const [loading, setLoading] = useState(!initialRecipe);
+  const [loading, setLoading] = useState(isPartialRecipe);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [togglingFav, setTogglingFav] = useState(false);
@@ -72,14 +79,21 @@ const RecipeDetailScreen = ({ route, navigation }) => {
     }
   }, [currentUserId, recipe?._id, recipeId]);
 
+  // Always fetch full details if recipe object is missing ingredients or instructions
   useEffect(() => {
-    if (!initialRecipe && recipeId) {
+    const targetId = recipe?._id || initialRecipe?._id || recipeId;
+    const targetTitle = recipe?.title || initialRecipe?.title;
+
+    if (isPartialRecipe && (targetId || targetTitle)) {
       const fetchDetail = async () => {
         try {
           setLoading(true);
-          const response = await recipeApi.getRecipeById(recipeId);
-          if (response.success) {
+          const response = await recipeApi.getRecipeById(targetId || 'lookup', targetTitle || '');
+          if (response.success && response.data) {
             setRecipe(response.data);
+            if (response.data.servings && !servingsCooked) {
+              setServingsCooked(response.data.servings);
+            }
           }
         } catch (error) {
           Alert.alert('Lỗi', 'Không thể tải chi tiết món ăn');
@@ -90,7 +104,7 @@ const RecipeDetailScreen = ({ route, navigation }) => {
 
       fetchDetail();
     }
-  }, [recipeId, initialRecipe]);
+  }, [recipeId, initialRecipe, isPartialRecipe]);
 
   const handleToggleFavorite = async () => {
     const targetId = recipe?._id || recipeId;

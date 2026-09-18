@@ -350,7 +350,18 @@ const CookingHistoryScreen = ({ navigation }) => {
                     </View>
 
                     {/* Main Recipe Info Row */}
-                    <View style={styles.recipeRow}>
+                    <TouchableOpacity
+                      style={styles.recipeRow}
+                      onPress={() => {
+                        const targetRecipeId = item.recipe?._id || (typeof item.recipe === 'string' ? item.recipe : item._id);
+                        const targetRecipe = item.recipe && typeof item.recipe === 'object' && item.recipe.title ? item.recipe : item.recipeSnapshot;
+                        navigation.navigate('RecipeDetail', {
+                          recipeId: targetRecipeId,
+                          recipe: targetRecipe,
+                        });
+                      }}
+                      activeOpacity={0.85}
+                    >
                       <Image source={{ uri: imageUrl }} style={styles.recipeThumbnail} />
                       <View style={styles.recipeDetails}>
                         <Text style={styles.cardTitle} numberOfLines={2}>
@@ -401,7 +412,7 @@ const CookingHistoryScreen = ({ navigation }) => {
                           </View>
                         </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
 
                     {/* Chef Notes / Review Bubble if exists */}
                     {Boolean(item.notes) && (
@@ -415,10 +426,11 @@ const CookingHistoryScreen = ({ navigation }) => {
                     <TouchableOpacity
                       style={styles.recookBtn}
                       onPress={() => {
-                        const targetRecipeId = item.recipe?._id || item.recipe || item._id;
+                        const targetRecipeId = item.recipe?._id || (typeof item.recipe === 'string' ? item.recipe : item._id);
+                        const targetRecipe = item.recipe && typeof item.recipe === 'object' && item.recipe.title ? item.recipe : item.recipeSnapshot;
                         navigation.navigate('RecipeDetail', {
                           recipeId: targetRecipeId,
-                          recipe: item.recipe || item.recipeSnapshot,
+                          recipe: targetRecipe,
                         });
                       }}
                       activeOpacity={0.8}

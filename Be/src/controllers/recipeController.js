@@ -81,14 +81,27 @@ const getAllRecipes = async (req, res, next) => {
 // @desc    Get single recipe by ID
 // @route   GET /api/recipes/:id
 // @access  Public
+// @desc    Get single recipe by ID
+// @route   GET /api/recipes/:id
+// @access  Public
 const getRecipeById = async (req, res, next) => {
   try {
-    const recipe = await Recipe.findById(req.params.id).populate('createdBy', 'name avatar');
+    const { id } = req.params;
+    const { title } = req.query;
+
+    let recipe = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      recipe = await Recipe.findById(id).populate('createdBy', 'name avatar');
+    }
+
+    if (!recipe && title) {
+      recipe = await Recipe.findOne({ title }).populate('createdBy', 'name avatar');
+    }
 
     if (!recipe) {
       return res.status(404).json({
         success: false,
-        message: 'Recipe not found',
+        message: 'Không tìm thấy công thức món ăn',
       });
     }
 

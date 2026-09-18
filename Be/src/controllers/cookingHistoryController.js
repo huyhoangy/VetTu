@@ -93,7 +93,7 @@ const getCookingHistory = async (req, res, next) => {
     }
 
     const historyItems = await CookingHistory.find(query)
-      .populate('recipe', 'title imageUrl prepTimeMinutes cookTimeMinutes difficulty servings')
+      .populate('recipe')
       .sort({ cookedAt: -1 });
 
     // Compute comprehensive statistics
