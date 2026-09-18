@@ -14,75 +14,71 @@ import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import recipeApi from '../../api/recipeApi';
 
-const QUICK_THEMES = [
-  {
-    id: 'breakfast',
-    title: 'Bữa sáng 5 phút',
-    emoji: '🍳',
-    color: '#FEF3C7',
-    textColor: '#92400E',
-    desc: 'Trứng, xúc xích, bánh mì',
-  },
-  {
-    id: 'eatclean',
-    title: 'Eat Clean Giữ Dáng',
-    emoji: '🥗',
-    color: '#ECFDF5',
-    textColor: '#065F46',
-    desc: 'Ức gà, bông cải, rau củ',
-  },
-  {
-    id: 'midnight',
-    title: 'Mì đêm cú đêm',
-    emoji: '🍜',
-    color: '#FEE2E2',
-    textColor: '#991B1B',
-    desc: 'Mì tôm kim chi phô mai',
-  },
-  {
-    id: 'vegetarian',
-    title: 'Món Chay Thanh Tịnh',
-    emoji: '🌿',
-    color: '#F3E8FF',
-    textColor: '#6B21A8',
-    desc: 'Đậu hũ, nấm xì dầu',
-  },
-];
-
-const DAILY_TIPS = [
+const KITCHEN_TIPS = [
   'Bọc giấy báo hoặc màng bọc quanh cuống chuối sẽ giúp chuối tươi lâu hơn 4-5 ngày.',
-  'Rau xà lách hoặc rau thơm bị héo? Ngâm vào tô nước đá 10 phút, rau sẽ giòn tươi trở lại ngay!',
-  'Cà chua bảo quản ở nhiệt độ phòng cuống hướng xuống sẽ giữ được vị ngọt và thơm lâu hơn trong tủ lạnh.',
-  'Cơm nguội trước khi rang, trộn đều 1 quả trứng sống vào sẽ giúp hạt cơm tơi vàng óng ả.',
+  'Rau thơm hoặc rau xà lách bị héo? Ngâm vào tô nước đá lạnh 10 phút, rau sẽ giòn tươi trở lại!',
+  'Cà chua bảo quản ở nhiệt độ phòng cuống hướng xuống sẽ giữ vị ngọt và mọng nước lâu hơn trong tủ lạnh.',
+  'Cơm nguội trước khi rang, trộn đều 1 quả trứng sống vào sẽ giúp hạt cơm tơi xốp và vàng óng ả.',
+  'Muốn khoai tây không bị mọc mầm, hãy để chung 1 quả táo vào rổ khoai tây.',
+  'Nấu canh quá mặn? Thả vài lát khoai tây sống vào đun 5 phút, khoai sẽ hút bớt lượng muối thừa.',
+  'Bảo quản hành lá cắt nhỏ trong chai nhựa hoặc hộp kín để ngăn đá, dùng cả tháng vẫn thơm ngon.',
+  'Để khử mùi tanh của cá và sườn, hãy ngâm qua nước vo gạo hoặc nước gừng đập dập 10 phút trước khi nấu.',
 ];
 
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const [allRecipes, setAllRecipes] = useState([]);
   const [featuredRecipes, setFeaturedRecipes] = useState([]);
   const [recipeCount, setRecipeCount] = useState(39);
   const [loading, setLoading] = useState(true);
 
-  // Pick a random tip
-  const [dailyTip] = useState(() => DAILY_TIPS[Math.floor(Math.random() * DAILY_TIPS.length)]);
+  // Daily tip calculation based on day of the year
+  const getDayOfYear = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    return Math.floor(diff / oneDay);
+  };
+
+  const [tipIndex, setTipIndex] = useState(() => getDayOfYear() % KITCHEN_TIPS.length);
+
+  // Shuffle helper to pick N random items
+  const pickRandomRecipes = (list, count = 6) => {
+    if (!list || list.length === 0) return [];
+    const shuffled = [...list].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+  };
 
   useEffect(() => {
-    const fetchFeatured = async () => {
+    const fetchRecipes = async () => {
       try {
         setLoading(true);
         const res = await recipeApi.getAllRecipes();
         if (res.success && res.data) {
-          setFeaturedRecipes(res.data.slice(0, 6));
+          setAllRecipes(res.data);
+          setFeaturedRecipes(pickRandomRecipes(res.data, 6));
           if (res.count) setRecipeCount(res.count);
         }
       } catch (error) {
-        // Silent fallback
+        // Fallback
       } finally {
         setLoading(false);
       }
     };
-    fetchFeatured();
+    fetchRecipes();
   }, []);
+
+  const handleRefreshFeatured = () => {
+    if (allRecipes.length > 0) {
+      setFeaturedRecipes(pickRandomRecipes(allRecipes, 6));
+    }
+  };
+
+  const handleNextTip = () => {
+    setTipIndex((prev) => (prev + 1) % KITCHEN_TIPS.length);
+  };
 
   return (
     <View style={styles.container}>
@@ -159,39 +155,21 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Quick Cooking Themes */}
+        {/* Featured / Daily Recipes Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>⚡ Nấu nhanh theo chủ đề</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Pantry')}>
-            <Text style={styles.seeAllText}>Xem tất cả</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.themesRow}
-        >
-          {QUICK_THEMES.map((theme) => (
-            <TouchableOpacity
-              key={theme.id}
-              style={[styles.themeCard, { backgroundColor: theme.color }]}
-              onPress={() => navigation.navigate('Pantry')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.themeEmoji}>{theme.emoji}</Text>
-              <Text style={[styles.themeTitle, { color: theme.textColor }]}>{theme.title}</Text>
-              <Text style={styles.themeDesc} numberOfLines={1}>
-                {theme.desc}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Featured / Today's Recipes */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>🔥 Gợi ý món ngon hôm nay</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Pantry')}>
-            <Text style={styles.seeAllText}>Vét tủ ngay</Text>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>🔥 Gợi ý món ngon hôm nay</Text>
+            <View style={styles.dailyBadge}>
+              <Text style={styles.dailyBadgeText}>Tự động đổi mỗi ngày</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.refreshButton}
+            onPress={handleRefreshFeatured}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="shuffle" size={14} color={Colors.primary} />
+            <Text style={styles.refreshText}>Đổi món</Text>
           </TouchableOpacity>
         </View>
 
@@ -244,13 +222,19 @@ const HomeScreen = ({ navigation }) => {
           </ScrollView>
         )}
 
-        {/* Daily Food-Saving Tip */}
+        {/* Daily Food-Saving Tip Card */}
         <View style={styles.tipCard}>
           <View style={styles.tipHeader}>
-            <Ionicons name="bulb" size={20} color="#D97706" />
-            <Text style={styles.tipTitle}>Mẹo nhà bếp hôm nay</Text>
+            <View style={styles.tipTitleRow}>
+              <Ionicons name="bulb" size={18} color="#D97706" />
+              <Text style={styles.tipTitle}>Mẹo nhà bếp hôm nay</Text>
+            </View>
+            <TouchableOpacity onPress={handleNextTip} style={styles.nextTipBtn} activeOpacity={0.7}>
+              <Ionicons name="refresh" size={14} color="#B45309" />
+              <Text style={styles.nextTipText}>Mẹo khác</Text>
+            </TouchableOpacity>
           </View>
-          <Text style={styles.tipContent}>{dailyTip}</Text>
+          <Text style={styles.tipContent}>{KITCHEN_TIPS[tipIndex]}</Text>
         </View>
       </ScrollView>
     </View>
@@ -408,43 +392,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: Colors.text,
   },
-  seeAllText: {
-    fontSize: 13,
+  dailyBadge: {
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  dailyBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+  },
+  refreshText: {
+    fontSize: 12,
     fontWeight: '700',
     color: Colors.primary,
-  },
-  themesRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  themeCard: {
-    width: 140,
-    padding: 14,
-    borderRadius: 18,
-  },
-  themeEmoji: {
-    fontSize: 28,
-    marginBottom: 8,
-  },
-  themeTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  themeDesc: {
-    fontSize: 11,
-    color: '#6B7280',
   },
   recipeSlider: {
     flexDirection: 'row',
     gap: 14,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   recipeCard: {
     width: 160,
@@ -497,14 +483,33 @@ const styles = StyleSheet.create({
   },
   tipHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  tipTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   tipTitle: {
     fontSize: 13,
     fontWeight: '700',
     color: '#B45309',
+  },
+  nextTipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  nextTipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#92400E',
   },
   tipContent: {
     fontSize: 12,
