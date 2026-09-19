@@ -17,12 +17,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import shareApi from '../../api/shareApi';
+import StatusUpdateModal from '../../components/common/StatusUpdateModal';
 
 const STATUS_FILTERS = [
   { id: 'ALL', label: 'Tất cả' },
-  { id: 'AVAILABLE', label: '🟢 Đang còn sẵn' },
-  { id: 'RESERVED', label: '🤝 Đã hẹn lấy' },
-  { id: 'COMPLETED', label: '✅ Đã tặng xong' },
+  { id: 'AVAILABLE', label: 'Còn sẵn' },
+  { id: 'RESERVED', label: 'Đã hẹn' },
+  { id: 'COMPLETED', label: 'Đã tặng' },
 ];
 
 const CATEGORY_MAP = {
@@ -51,6 +52,8 @@ const MySharedItemsScreen = ({ navigation }) => {
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [selectedItemForStatus, setSelectedItemForStatus] = useState(null);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
 
   const fetchMyShares = async () => {
     if (!currentUserId) return;
@@ -88,28 +91,19 @@ const MySharedItemsScreen = ({ navigation }) => {
 
   // Quick Status Change handler
   const handleChangeStatus = (item) => {
-    Alert.alert(
-      'Cập nhật trạng thái món',
-      `Chọn trạng thái mới cho "${item.title}":`,
-      [
-        {
-          text: '🟢 Đang còn sẵn (AVAILABLE)',
-          onPress: () => updateStatus(item._id, 'AVAILABLE'),
-        },
-        {
-          text: '🤝 Đã hẹn người lấy (RESERVED)',
-          onPress: () => updateStatus(item._id, 'RESERVED'),
-        },
-        {
-          text: '✅ Đã tặng xong (COMPLETED)',
-          onPress: () => updateStatus(item._id, 'COMPLETED'),
-        },
-        {
-          text: 'Huỷ',
-          style: 'cancel',
-        },
-      ]
-    );
+    setSelectedItemForStatus(item);
+    setStatusModalVisible(true);
+  };
+
+  const handleSelectStatus = async (newStatus) => {
+    if (!selectedItemForStatus) return;
+    if (newStatus === selectedItemForStatus.status) {
+      setStatusModalVisible(false);
+      return;
+    }
+    const targetId = selectedItemForStatus._id;
+    setStatusModalVisible(false);
+    await updateStatus(targetId, newStatus);
   };
 
   const updateStatus = async (id, newStatus) => {
@@ -503,6 +497,16 @@ const MySharedItemsScreen = ({ navigation }) => {
           })
         )}
       </ScrollView>
+
+      {/* Modern Status Selection Sheet */}
+      <StatusUpdateModal
+        visible={statusModalVisible}
+        onClose={() => setStatusModalVisible(false)}
+        currentStatus={selectedItemForStatus?.status}
+        itemTitle={selectedItemForStatus?.title}
+        onSelectStatus={handleSelectStatus}
+        loading={actionLoadingId !== null}
+      />
     </View>
   );
 };

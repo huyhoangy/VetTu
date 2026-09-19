@@ -16,6 +16,7 @@ import { Colors } from '../../constants/colors';
 import shareApi from '../../api/shareApi';
 import chatApi from '../../api/chatApi';
 import { useAuth } from '../../context/AuthContext';
+import StatusUpdateModal from '../../components/common/StatusUpdateModal';
 
 const ShareDetailScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
@@ -25,6 +26,8 @@ const ShareDetailScreen = ({ navigation, route }) => {
   const [share, setShare] = useState(null);
   const [loading, setLoading] = useState(true);
   const [chatStarting, setChatStarting] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -48,6 +51,28 @@ const ShareDetailScreen = ({ navigation, route }) => {
   const isMyPost = Boolean(
     donorId && myId && donorId.toString() === myId.toString()
   );
+
+  const handleSelectStatus = async (newStatus) => {
+    if (!share) return;
+    if (newStatus === share.status) {
+      setStatusModalVisible(false);
+      return;
+    }
+    try {
+      setStatusUpdating(true);
+      const res = await shareApi.updateShareStatus(share._id, newStatus);
+      if (res.success) {
+        setShare((prev) => ({ ...prev, status: newStatus }));
+      } else {
+        Alert.alert('Lỗi', res.message || 'Không thể cập nhật trạng thái');
+      }
+    } catch (e) {
+      Alert.alert('Lỗi', 'Không thể cập nhật trạng thái bài chia sẻ');
+    } finally {
+      setStatusUpdating(false);
+      setStatusModalVisible(false);
+    }
+  };
 
   const handleContactDonor = async () => {
     if (isMyPost) {
@@ -264,36 +289,7 @@ const ShareDetailScreen = ({ navigation, route }) => {
           <>
             <TouchableOpacity
               style={styles.manageStatusBtn}
-              onPress={() => {
-                Alert.alert(
-                  'Cập nhật trạng thái món',
-                  `Chọn trạng thái mới cho "${share.title}":`,
-                  [
-                    {
-                      text: '🟢 Đang còn sẵn (AVAILABLE)',
-                      onPress: async () => {
-                        const res = await shareApi.updateShareStatus(share._id, 'AVAILABLE');
-                        if (res.success) setShare((prev) => ({ ...prev, status: 'AVAILABLE' }));
-                      },
-                    },
-                    {
-                      text: '🤝 Đã hẹn người lấy (RESERVED)',
-                      onPress: async () => {
-                        const res = await shareApi.updateShareStatus(share._id, 'RESERVED');
-                        if (res.success) setShare((prev) => ({ ...prev, status: 'RESERVED' }));
-                      },
-                    },
-                    {
-                      text: '✅ Đã tặng xong (COMPLETED)',
-                      onPress: async () => {
-                        const res = await shareApi.updateShareStatus(share._id, 'COMPLETED');
-                        if (res.success) setShare((prev) => ({ ...prev, status: 'COMPLETED' }));
-                      },
-                    },
-                    { text: 'Huỷ', style: 'cancel' },
-                  ]
-                );
-              }}
+              onPress={() => setStatusModalVisible(true)}
               activeOpacity={0.8}
             >
               <Ionicons name="sync-outline" size={18} color={Colors.primary} />
@@ -371,6 +367,16 @@ const ShareDetailScreen = ({ navigation, route }) => {
           </>
         )}
       </View>
+
+      {/* Modern Status Selection Sheet */}
+      <StatusUpdateModal
+        visible={statusModalVisible}
+        onClose={() => setStatusModalVisible(false)}
+        currentStatus={share?.status}
+        itemTitle={share?.title}
+        onSelectStatus={handleSelectStatus}
+        loading={statusUpdating}
+      />
     </View>
   );
 };
