@@ -137,7 +137,7 @@ const CommunityScreen = ({ navigation, route }) => {
         });
       }
     } catch (error) {
-      console.error('Error fetching shares:', error);
+      console.log('Notice fetching shares:', error?.message || error);
     } finally {
       if (!silent) setLoading(false);
       setRefreshing(false);
