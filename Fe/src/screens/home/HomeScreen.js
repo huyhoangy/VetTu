@@ -63,6 +63,7 @@ const HomeScreen = ({ navigation }) => {
     return Math.floor(diff / oneDay);
   };
 
+  const [tipIndex, setTipIndex] = useState(() => getDayOfYear() % KITCHEN_TIPS.length);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchRecipes = useCallback(async (isRefresh = false) => {
