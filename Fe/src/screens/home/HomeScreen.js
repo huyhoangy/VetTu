@@ -28,6 +28,12 @@ const KITCHEN_TIPS = [
   'Để khử mùi tanh của cá và sườn, hãy ngâm qua nước vo gạo hoặc nước gừng đập dập 10 phút trước khi nấu.',
 ];
 
+const pickRandomRecipes = (recipes, count = 6) => {
+  if (!Array.isArray(recipes) || recipes.length === 0) return [];
+  const shuffled = [...recipes].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+};
+
 const HomeScreen = ({ navigation }) => {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
@@ -70,10 +76,11 @@ const HomeScreen = ({ navigation }) => {
     try {
       if (!isRefresh) setLoading(true);
       const res = await recipeApi.getAllRecipes();
-      if (res.success && res.data && res.data.length > 0) {
-        setAllRecipes(res.data);
-        setFeaturedRecipes(pickRandomRecipes(res.data, 6));
-        if (res.count) setRecipeCount(res.count);
+      const recipeList = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      if (recipeList.length > 0) {
+        setAllRecipes(recipeList);
+        setFeaturedRecipes(pickRandomRecipes(recipeList, 6));
+        if (res?.count) setRecipeCount(res.count);
       }
     } catch (error) {
       console.log('Notice fetching recipes in HomeScreen:', error?.message);
@@ -227,7 +234,7 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.loadingBox}>
             <ActivityIndicator size="small" color={Colors.primary} />
           </View>
-        ) : (
+        ) : featuredRecipes.length > 0 ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -272,6 +279,15 @@ const HomeScreen = ({ navigation }) => {
               </TouchableOpacity>
             ))}
           </ScrollView>
+        ) : (
+          <TouchableOpacity
+            style={styles.emptyFeaturedBox}
+            onPress={() => fetchRecipes()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="refresh-circle-outline" size={22} color={Colors.primary} />
+            <Text style={styles.emptyFeaturedText}>Chưa tải được gợi ý món. Nhấn để tải lại</Text>
+          </TouchableOpacity>
         )}
 
         {/* Daily Food-Saving Tip Card */}
@@ -549,6 +565,25 @@ const styles = StyleSheet.create({
   loadingBox: {
     paddingVertical: 30,
     alignItems: 'center',
+  },
+  emptyFeaturedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    marginBottom: 20,
+    gap: 8,
+  },
+  emptyFeaturedText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontWeight: '600',
   },
   tipCard: {
     backgroundColor: '#FFFBEB',
