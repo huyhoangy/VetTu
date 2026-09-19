@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "tunnel": "npx localtunnel --port 5000 --subdomain vettu-api-hoang"
+    "tunnel": "node tunnel.js"
   },
   "keywords": [
     "recipe",
@@ -28,6 +28,7 @@
     "morgan": "^1.10.0"
   },
   "devDependencies": {
+    "localtunnel": "^2.0.2",
     "nodemon": "^3.1.2"
   }
 }
