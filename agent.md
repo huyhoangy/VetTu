@@ -74,3 +74,9 @@ All Backend endpoints must return a predictable JSON payload:
 - **Payload Validation:** Validate and sanitize all incoming request bodies, params, and queries.
 - **Environment Security:** Never commit or hardcode credentials, secrets, or database URIs; strictly use `.env`.
 - **Centralized Error Handling:** Pass errors to the global error middleware via `next(error)`.
+
+## 7. Network & Development Environment (STRICT TUNNEL POLICY)
+- **Always Use Tunnel:** The developer strictly uses **Tunnel (Cloudflare Tunnel via `npm run tunnel` in `Be/`)** to expose the backend API over HTTPS (`https://...trycloudflare.com/api`).
+- **Never Change Back to Local LAN IP:** Do NOT change `EXPO_PUBLIC_API_URL` back to local IP addresses (like `192.168.x.x` or `10.0.2.2`) unless the user explicitly requests it.
+- **Auto-Syncing `.env`:** The tunnel script `Be/tunnel.js` automatically writes the active public tunnel URL directly to `Fe/.env`.
+- **Tunnel Bypass Headers:** `Fe/src/api/axiosClient.js` must always retain the bypass headers (`Bypass-Tunnel-Reminder`, `ngrok-skip-browser-warning`) to guarantee seamless connection without intermediary browser landing pages.
