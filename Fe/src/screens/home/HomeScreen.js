@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -62,37 +63,49 @@ const HomeScreen = ({ navigation }) => {
     return Math.floor(diff / oneDay);
   };
 
-  const [tipIndex, setTipIndex] = useState(() => getDayOfYear() % KITCHEN_TIPS.length);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Shuffle helper to pick N random items
-  const pickRandomRecipes = (list, count = 6) => {
-    if (!list || list.length === 0) return [];
-    const shuffled = [...list].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count);
-  };
+  const fetchRecipes = useCallback(async (isRefresh = false) => {
+    try {
+      if (!isRefresh) setLoading(true);
+      const res = await recipeApi.getAllRecipes();
+      if (res.success && res.data && res.data.length > 0) {
+        setAllRecipes(res.data);
+        setFeaturedRecipes(pickRandomRecipes(res.data, 6));
+        if (res.count) setRecipeCount(res.count);
+      }
+    } catch (error) {
+      console.log('Notice fetching recipes in HomeScreen:', error?.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUnreadCount();
+      if (allRecipes.length === 0) {
+        fetchRecipes();
+      }
+    }, [fetchUnreadCount, fetchRecipes, allRecipes.length])
+  );
 
   useEffect(() => {
-    const fetchRecipes = async () => {
-      try {
-        setLoading(true);
-        const res = await recipeApi.getAllRecipes();
-        if (res.success && res.data) {
-          setAllRecipes(res.data);
-          setFeaturedRecipes(pickRandomRecipes(res.data, 6));
-          if (res.count) setRecipeCount(res.count);
-        }
-      } catch (error) {
-        // Fallback
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchRecipes();
-  }, []);
+  }, [fetchRecipes]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchRecipes(true);
+    fetchUnreadCount();
+  };
 
   const handleRefreshFeatured = () => {
     if (allRecipes.length > 0) {
       setFeaturedRecipes(pickRandomRecipes(allRecipes, 6));
+    } else {
+      fetchRecipes();
     }
   };
 
@@ -112,6 +125,7 @@ const HomeScreen = ({ navigation }) => {
           },
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Top User Header */}
         <View style={styles.header}>
@@ -226,7 +240,9 @@ const HomeScreen = ({ navigation }) => {
                 onPress={() =>
                   navigation.navigate('RecipeDetail', {
                     recipe,
-                    matchedIngredients: recipe.ingredients.map((i) => i.name),
+                    matchedIngredients: (recipe.ingredients || []).map((i) =>
+                      typeof i === 'string' ? i : i.name
+                    ),
                     missingIngredients: [],
                   })
                 }
