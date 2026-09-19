@@ -8,8 +8,10 @@ const axiosClient = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true',
+    'ngrok-skip-browser-warning': 'true',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
 // Attach JWT Token to every request
