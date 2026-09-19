@@ -16,6 +16,7 @@ import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import recipeApi from '../../api/recipeApi';
 import notificationApi from '../../api/notificationApi';
+import pantryApi from '../../api/pantryApi';
 
 const KITCHEN_TIPS = [
   'Bọc giấy báo hoặc màng bọc quanh cuống chuối sẽ giúp chuối tươi lâu hơn 4-5 ngày.',
@@ -42,8 +43,19 @@ const HomeScreen = ({ navigation }) => {
   const [recipeCount, setRecipeCount] = useState(39);
   const [loading, setLoading] = useState(true);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [pantryStats, setPantryStats] = useState({ total: 0, expiringSoon: 0, expired: 0 });
 
   const currentUserId = user?._id || user?.id;
+
+  const fetchPantryStats = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const res = await pantryApi.getUserPantry({ userId: currentUserId });
+      if (res.success && res.stats) {
+        setPantryStats(res.stats);
+      }
+    } catch (e) {}
+  }, [currentUserId]);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -93,20 +105,23 @@ const HomeScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchUnreadCount();
+      fetchPantryStats();
       if (allRecipes.length === 0) {
         fetchRecipes();
       }
-    }, [fetchUnreadCount, fetchRecipes, allRecipes.length])
+    }, [fetchUnreadCount, fetchPantryStats, fetchRecipes, allRecipes.length])
   );
 
   useEffect(() => {
     fetchRecipes();
-  }, [fetchRecipes]);
+    fetchPantryStats();
+  }, [fetchRecipes, fetchPantryStats]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchRecipes(true);
     fetchUnreadCount();
+    fetchPantryStats();
   };
 
   const handleRefreshFeatured = () => {
@@ -195,9 +210,42 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
+        {/* Expiring Soon Food Reminder Alert Banner */}
+        {(pantryStats.expiringSoon > 0 || pantryStats.expired > 0) && (
+          <TouchableOpacity
+            style={styles.expiryAlertCard}
+            onPress={() => navigation.navigate('PantryManager')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.expiryAlertLeft}>
+              <View style={styles.expiryAlertIconBox}>
+                <Ionicons name="alarm" size={22} color="#DC2626" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.expiryAlertTitleRow}>
+                  <Text style={styles.expiryAlertTitle}>
+                    Tủ lạnh có {pantryStats.expiringSoon + pantryStats.expired} món cần ưu tiên dùng!
+                  </Text>
+                  <View style={styles.expiryAlertBadge}>
+                    <Text style={styles.expiryAlertBadgeText}>Hạn gấp</Text>
+                  </View>
+                </View>
+                <Text style={styles.expiryAlertDesc} numberOfLines={1}>
+                  Sắp hết hạn trong 1-2 ngày. Bấm để xem và Vét Tủ nấu ngay!
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#DC2626" />
+          </TouchableOpacity>
+        )}
+
         {/* Quick Stats Bar */}
         <View style={styles.statsRow}>
-          <View style={styles.statBox}>
+          <TouchableOpacity
+            style={styles.statBox}
+            onPress={() => navigation.navigate('Pantry')}
+            activeOpacity={0.7}
+          >
             <View style={[styles.statIconBox, { backgroundColor: '#FFF7ED' }]}>
               <Ionicons name="restaurant" size={20} color={Colors.primary} />
             </View>
@@ -205,16 +253,21 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.statValue}>{recipeCount}+</Text>
               <Text style={styles.statLabel}>Công thức</Text>
             </View>
-          </View>
-          <View style={styles.statBox}>
-            <View style={[styles.statIconBox, { backgroundColor: '#F0FDF4' }]}>
-              <Ionicons name="people" size={20} color="#10B981" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.statBox}
+            onPress={() => navigation.navigate('PantryManager')}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.statIconBox, { backgroundColor: '#F0F9FF' }]}>
+              <Ionicons name="snow" size={20} color="#0EA5E9" />
             </View>
             <View>
-              <Text style={styles.statValue}>45</Text>
-              <Text style={styles.statLabel}>Hàng xóm chia sẻ</Text>
+              <Text style={styles.statValue}>{pantryStats.total}</Text>
+              <Text style={styles.statLabel}>Món trong tủ</Text>
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Featured / Daily Recipes Section */}
@@ -446,6 +499,59 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  expiryAlertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 20,
+  },
+  expiryAlertLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    paddingRight: 8,
+  },
+  expiryAlertIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  expiryAlertTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  expiryAlertTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#991B1B',
+    flex: 1,
+  },
+  expiryAlertBadge: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  expiryAlertBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  expiryAlertDesc: {
+    fontSize: 11,
+    color: '#B91C1C',
   },
   statsRow: {
     flexDirection: 'row',

@@ -22,12 +22,13 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['MESSAGE', 'NEW_SHARE', 'CLAIM_CONFIRMED', 'SYSTEM'],
+      enum: ['MESSAGE', 'NEW_SHARE', 'CLAIM_CONFIRMED', 'EXPIRY_ALERT', 'SYSTEM'],
       default: 'SYSTEM',
     },
     data: {
       conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation' },
       shareId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodShare' },
+      pantryItemId: { type: mongoose.Schema.Types.ObjectId, ref: 'PantryItem' },
       avatar: { type: String },
     },
     isRead: {

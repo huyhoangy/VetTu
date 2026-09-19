@@ -10,6 +10,9 @@ import CookingHistoryScreen from '../screens/cooking/CookingHistoryScreen';
 import MySharedItemsScreen from '../screens/community/MySharedItemsScreen';
 import ShareDetailScreen from '../screens/community/ShareDetailScreen';
 import CreateShareScreen from '../screens/community/CreateShareScreen';
+import PantryManagerScreen from '../screens/pantry/PantryManagerScreen';
+import PantryScreen from '../screens/pantry/PantryScreen';
+import RecipeResultsScreen from '../screens/recipe/RecipeResultsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,6 +25,9 @@ const ProfileStackNavigator = () => {
       }}
     >
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="PantryManager" component={PantryManagerScreen} />
+      <Stack.Screen name="Pantry" component={PantryScreen} />
+      <Stack.Screen name="RecipeResults" component={RecipeResultsScreen} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} />
       <Stack.Screen name="CookingHistory" component={CookingHistoryScreen} />
       <Stack.Screen name="MySharedItems" component={MySharedItemsScreen} />

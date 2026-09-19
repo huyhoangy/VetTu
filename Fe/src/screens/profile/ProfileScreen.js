@@ -16,6 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import recipeApi from '../../api/recipeApi';
 import cookingHistoryApi from '../../api/cookingHistoryApi';
 import shareApi from '../../api/shareApi';
+import pantryApi from '../../api/pantryApi';
 
 const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -23,6 +24,7 @@ const ProfileScreen = ({ navigation }) => {
   const [favoritesCount, setFavoritesCount] = useState(user?.favorites?.length || 0);
   const [cookedCount, setCookedCount] = useState(0);
   const [mySharesCount, setMySharesCount] = useState(0);
+  const [pantryStats, setPantryStats] = useState({ total: 0, expiringSoon: 0 });
 
   const currentUserId = user?._id || user?.id;
 
@@ -49,6 +51,13 @@ const ProfileScreen = ({ navigation }) => {
             setMySharesCount(res.stats?.totalShares || res.count || 0);
           }
         }).catch(() => {});
+
+        // Fetch pantry stats
+        pantryApi.getUserPantry({ userId: currentUserId }).then((res) => {
+          if (res.success && res.stats) {
+            setPantryStats(res.stats);
+          }
+        }).catch(() => {});
       }
     }, [currentUserId])
   );
@@ -72,6 +81,7 @@ const ProfileScreen = ({ navigation }) => {
     {
       title: 'Hoạt động của bạn',
       items: [
+        { id: 'pantry_inventory', title: 'Tủ lạnh & Hạn thực phẩm', icon: 'snow-outline', badge: pantryStats.expiringSoon > 0 ? `${pantryStats.expiringSoon} món cần dùng` : (pantryStats.total > 0 ? `${pantryStats.total} món` : null), color: '#0EA5E9' },
         { id: 'messages', title: 'Tin nhắn & Lịch sử nhận món', icon: 'chatbubble-ellipses-outline', badge: 'Mới', color: '#3B82F6' },
         { id: 'favorites', title: 'Món ăn yêu thích', icon: 'heart', badge: favoritesCount > 0 ? `${favoritesCount}` : null, color: '#EF4444' },
         { id: 'cooked', title: 'Lịch sử nấu ăn', icon: 'restaurant-outline', badge: cookedCount > 0 ? `${cookedCount}` : null, color: Colors.primary },
@@ -82,7 +92,6 @@ const ProfileScreen = ({ navigation }) => {
       title: 'Cài đặt & Trợ giúp',
       items: [
         { id: 'notifications', title: 'Thông báo', icon: 'notifications-outline', color: '#6366F1' },
-        { id: 'pantry_alert', title: 'Nhắc nhở hạn thực phẩm', icon: 'alarm-outline', color: '#F59E0B' },
         { id: 'support', title: 'Hỗ trợ & Góp ý', icon: 'help-circle-outline', color: '#6B7280' },
         { id: 'about', title: 'Về ứng dụng Vét Tủ (v1.0.0)', icon: 'information-circle-outline', color: '#6B7280' },
       ],
@@ -157,7 +166,9 @@ const ProfileScreen = ({ navigation }) => {
                   ]}
                   activeOpacity={0.7}
                   onPress={() => {
-                    if (item.id === 'messages') {
+                    if (item.id === 'pantry_inventory') {
+                      navigation.navigate('PantryManager');
+                    } else if (item.id === 'messages') {
                       navigation.navigate('ConversationsList');
                     } else if (item.id === 'notifications') {
                       navigation.navigate('Notifications');

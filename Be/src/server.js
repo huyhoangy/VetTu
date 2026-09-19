@@ -29,6 +29,11 @@ app.use('/api/shares', require('./routes/shareRoutes'));
 app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/cooking-history', require('./routes/cookingHistoryRoutes'));
+app.use('/api/pantry', require('./routes/pantryRoutes'));
+
+// Start background expiry notification scheduler
+const { initExpiryScheduler } = require('./services/expiryScheduler');
+initExpiryScheduler();
 
 // Error handling middleware
 app.use(errorHandler);

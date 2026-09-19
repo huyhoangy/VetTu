@@ -161,12 +161,18 @@ const PANTRY_CATEGORIES = [
   },
 ];
 
-const PantryScreen = ({ navigation }) => {
+const PantryScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const [selectedIngredients, setSelectedIngredients] = useState(['Trứng gà', 'Cà chua', 'Hành lá']);
   const [selectedAppliance, setSelectedAppliance] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (route?.params?.preselectedIngredients && Array.isArray(route.params.preselectedIngredients)) {
+      setSelectedIngredients(route.params.preselectedIngredients);
+    }
+  }, [route?.params?.preselectedIngredients]);
 
   // Toggle ingredient selection
   const toggleIngredient = (name) => {
@@ -277,6 +283,24 @@ const PantryScreen = ({ navigation }) => {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Shortcut to My Fridge Inventory & Expiry Tracking */}
+        <TouchableOpacity
+          style={styles.myFridgeShortcut}
+          onPress={() => navigation.navigate('PantryManager')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.myFridgeShortcutLeft}>
+            <View style={styles.myFridgeIconBox}>
+              <Ionicons name="snow" size={20} color="#0EA5E9" />
+            </View>
+            <View>
+              <Text style={styles.myFridgeTitle}>Tủ lạnh & Hạn thực phẩm của tôi 🧊</Text>
+              <Text style={styles.myFridgeSub}>Quản lý hạn dùng, vị trí ngăn mát / ngăn đông</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+        </TouchableOpacity>
+
         {/* Section 1: Quick Presets */}
         <View style={styles.sectionBlock}>
           <Text style={styles.sectionTitle}>⚡ Chọn nhanh theo nhu cầu:</Text>
@@ -568,6 +592,40 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  myFridgeShortcut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 18,
+  },
+  myFridgeShortcutLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  myFridgeIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E0F2FE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  myFridgeTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0369A1',
+  },
+  myFridgeSub: {
+    fontSize: 11,
+    color: '#0284C7',
+    marginTop: 1,
   },
   smartPairingBox: {
     backgroundColor: '#FFFBEB',

@@ -28,14 +28,14 @@ const CATEGORIES = [
   { id: 'OTHER', title: '🍎 Khác' },
 ];
 
-const CreateShareScreen = ({ navigation }) => {
+const CreateShareScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [category, setCategory] = useState('VEGGIES');
+  const [title, setTitle] = useState(route?.params?.initialTitle || '');
+  const [description, setDescription] = useState(route?.params?.initialDescription || '');
+  const [quantity, setQuantity] = useState(route?.params?.initialQuantity || '');
+  const [category, setCategory] = useState(route?.params?.initialCategory || 'VEGGIES');
   const [type, setType] = useState('GIFT'); // GIFT or EXCHANGE
   const [addressName, setAddressName] = useState('Đang lấy vị trí...');
   const [coords, setCoords] = useState({ latitude: 21.031, longitude: 105.782 });
