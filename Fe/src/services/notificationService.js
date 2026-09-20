@@ -1,8 +1,46 @@
 import { Platform, Vibration } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { navigate } from '../navigation/navigationRef';
 import notificationApi from '../api/notificationApi';
 import authApi from '../api/authApi';
+
+const NOTIFICATIONS_ENABLED_KEY = '@vettu_notifications_enabled';
+let notificationsEnabledCached = true;
+
+// Pre-load notification setting into cache on startup
+AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY)
+  .then((val) => {
+    if (val !== null) {
+      notificationsEnabledCached = JSON.parse(val);
+    }
+  })
+  .catch(() => {});
+
+export const getNotificationSetting = async () => {
+  try {
+    const val = await AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY);
+    if (val !== null) {
+      notificationsEnabledCached = JSON.parse(val);
+      return notificationsEnabledCached;
+    }
+    return true;
+  } catch (e) {
+    return true;
+  }
+};
+
+export const setNotificationSetting = async (enabled) => {
+  try {
+    notificationsEnabledCached = Boolean(enabled);
+    await AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, JSON.stringify(Boolean(enabled)));
+    return notificationsEnabledCached;
+  } catch (e) {
+    return enabled;
+  }
+};
+
+export const isNotificationsEnabled = () => notificationsEnabledCached;
 
 // Determine if currently running inside Expo Go Client
 const isExpoGo =
@@ -86,6 +124,9 @@ export const requestNotificationPermissions = async () => {
  * Display an immediate notification (via in-app floating banner & native alerts)
  */
 export const showDeviceNotification = async ({ title, body, data = {}, type = 'SYSTEM' }) => {
+  if (!notificationsEnabledCached) {
+    return;
+  }
   try {
     // 1. Trigger in-app floating dropdown banner
     if (inAppNotificationCallback) {

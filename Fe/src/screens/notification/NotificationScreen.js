@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,6 +16,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import notificationApi from '../../api/notificationApi';
+import {
+  getNotificationSetting,
+  setNotificationSetting,
+} from '../../services/notificationService';
 
 const FILTER_TABS = [
   { id: 'ALL', label: 'Tất cả' },
@@ -39,8 +44,26 @@ const NotificationScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState('ALL');
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const currentUserId = user?._id || user?.id;
+
+  // Load notification permission / toggle setting
+  const loadNotificationSetting = useCallback(async () => {
+    try {
+      const enabled = await getNotificationSetting();
+      setNotificationsEnabled(enabled);
+    } catch (e) {}
+  }, []);
+
+  const handleToggleNotifications = async (value) => {
+    try {
+      setNotificationsEnabled(value);
+      await setNotificationSetting(value);
+    } catch (e) {
+      console.log('Error saving notification setting:', e);
+    }
+  };
 
   const fetchNotifications = useCallback(async (silent = false) => {
     try {
@@ -60,16 +83,19 @@ const NotificationScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchNotifications(true);
-    }, [fetchNotifications])
+      loadNotificationSetting();
+    }, [fetchNotifications, loadNotificationSetting])
   );
 
   useEffect(() => {
     fetchNotifications();
-  }, [fetchNotifications]);
+    loadNotificationSetting();
+  }, [fetchNotifications, loadNotificationSetting]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchNotifications(true);
+    loadNotificationSetting();
   };
 
   const handleMarkAllAsRead = async () => {
@@ -262,6 +288,64 @@ const NotificationScreen = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
+          {/* Notification Master Toggle Card */}
+          <View
+            style={[
+              styles.settingCard,
+              !notificationsEnabled && styles.settingCardDisabled,
+            ]}
+          >
+            <View style={styles.settingLeft}>
+              <View
+                style={[
+                  styles.settingIconBox,
+                  !notificationsEnabled && styles.settingIconBoxDisabled,
+                ]}
+              >
+                <Ionicons
+                  name={notificationsEnabled ? 'notifications' : 'notifications-off'}
+                  size={20}
+                  color={notificationsEnabled ? Colors.primary : '#94A3B8'}
+                />
+              </View>
+              <View style={styles.settingTextContainer}>
+                <View style={styles.settingTitleRow}>
+                  <Text style={styles.settingTitle}>
+                    {notificationsEnabled ? 'Thông báo ứng dụng' : 'Đã tắt thông báo'}
+                  </Text>
+                  <View
+                    style={[
+                      styles.settingStatusBadge,
+                      { backgroundColor: notificationsEnabled ? '#DCFCE7' : '#F1F5F9' },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.settingStatusBadgeText,
+                        { color: notificationsEnabled ? '#16A34A' : '#64748B' },
+                      ]}
+                    >
+                      {notificationsEnabled ? 'Đang bật' : 'Đã tắt'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.settingDesc}>
+                  {notificationsEnabled
+                    ? 'Nhận thông báo tin nhắn, món tặng mới và cảnh báo hạn thực phẩm'
+                    : 'Tắt toàn bộ chuông, rung và thông báo nổi trong ứng dụng'}
+                </Text>
+              </View>
+            </View>
+
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={handleToggleNotifications}
+              trackColor={{ false: '#CBD5E1', true: Colors.primaryLight }}
+              thumbColor={notificationsEnabled ? Colors.primary : '#64748B'}
+              ios_backgroundColor="#CBD5E1"
+            />
+          </View>
+
           {filteredNotifications.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>🔔</Text>
@@ -409,6 +493,72 @@ const styles = StyleSheet.create({
   },
   filterTabTextActive: {
     color: '#FFFFFF',
+  },
+  settingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  settingCardDisabled: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingRight: 10,
+    gap: 12,
+  },
+  settingIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FFF7ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingIconBoxDisabled: {
+    backgroundColor: '#F1F5F9',
+  },
+  settingTextContainer: {
+    flex: 1,
+  },
+  settingTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  settingTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  settingStatusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  settingStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  settingDesc: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    lineHeight: 15,
   },
   scrollList: {
     flex: 1,
