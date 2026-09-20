@@ -72,7 +72,7 @@ const fallbackParseText = (text) => {
 };
 
 /**
- * Call Google Gemini Flash API for Vision or Text
+ * Call Google Gemini Flash API for Vision or Text with Multi-Model Fallback
  */
 const callGeminiFlash = async ({ prompt, imageBase64, mimeType = 'image/jpeg' }) => {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -80,59 +80,77 @@ const callGeminiFlash = async ({ prompt, imageBase64, mimeType = 'image/jpeg' })
     throw new Error('Chưa cấu hình GEMINI_API_KEY trong .env backend');
   }
 
-  const modelName = 'gemini-3.6-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  // Candidate models to try in order of priority & speed
+  const candidateModels = [
+    'gemini-2.5-flash',
+    'gemini-1.5-flash',
+    'gemini-2.0-flash',
+  ];
 
-  const contents = [];
-  const parts = [{ text: prompt }];
+  let lastError = null;
 
-  if (imageBase64) {
-    // Strip header if data URI is passed (e.g. data:image/jpeg;base64,...)
-    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-    parts.push({
-      inlineData: {
-        mimeType: mimeType || 'image/jpeg',
-        data: cleanBase64,
-      },
-    });
-  }
+  for (const modelName of candidateModels) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-  contents.push({ parts });
+      const contents = [];
+      const parts = [{ text: prompt }];
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents,
-      generationConfig: {
-        temperature: 0.2,
-        responseMimeType: 'application/json',
-      },
-    }),
-  });
+      if (imageBase64) {
+        const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        parts.push({
+          inlineData: {
+            mimeType: mimeType || 'image/jpeg',
+            data: cleanBase64,
+          },
+        });
+      }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${errorText}`);
-  }
+      contents.push({ parts });
 
-  const data = await response.json();
-  const textOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          generationConfig: {
+            temperature: 0.3,
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
 
-  if (!textOutput) {
-    throw new Error('Không nhận được phản hồi từ AI');
-  }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log(`[Gemini API] Model ${modelName} returned status ${response.status}: ${errorText}`);
+        lastError = new Error(`Gemini API error (${response.status}): ${errorText}`);
+        // If 503 (high demand) or 429 (rate limit) or 404 (not found), try next model candidate
+        continue;
+      }
 
-  try {
-    return JSON.parse(textOutput);
-  } catch (parseErr) {
-    // If wrapped in markdown code fence
-    const jsonMatch = textOutput.match(/```json\s*([\s\S]*?)\s*```/) || textOutput.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      const data = await response.json();
+      const textOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!textOutput) {
+        throw new Error('Không nhận được phản hồi từ AI');
+      }
+
+      try {
+        return JSON.parse(textOutput);
+      } catch (parseErr) {
+        const jsonMatch = textOutput.match(/```json\s*([\s\S]*?)\s*```/) || textOutput.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          return JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        }
+        throw new Error('Dữ liệu AI trả về không đúng định dạng JSON');
+      }
+    } catch (err) {
+      console.log(`[Gemini API] Exception trying ${modelName}:`, err.message);
+      lastError = err;
     }
-    throw new Error('Dữ liệu AI trả về không đúng định dạng JSON');
   }
+
+  throw lastError || new Error('Tất cả các mô hình AI hiện đang quá tải');
 };
 
 /**
@@ -268,77 +286,86 @@ Trả về DUY NHẤT một mảng JSON (Array) gồm 7 phần tử theo đúng 
 Chỉ trả về JSON thuần túy, không có giải thích hay markdown code fence.
 `;
 
+  const sampleDays = [
+    {
+      dayIndex: 0,
+      dayName: 'Thứ 2',
+      meals: [
+        { slot: 'breakfast', customDishName: 'Bánh mì ốp la xúc xích', note: 'Bữa sáng nhanh gọn 10p', ingredients: ['Bánh mì', 'Trứng gà', 'Xúc xích'] },
+        { slot: 'lunch', customDishName: 'Thịt heo rang cháy cạnh + Canh rau cải', note: 'Cơm trưa đậm đà', ingredients: ['Thịt heo', 'Rau cải', 'Hành lá'] },
+        { slot: 'dinner', customDishName: 'Trứng chiên cà chua + Canh rau muống', note: 'Thanh đạm nhẹ bụng', ingredients: ['Trứng gà', 'Cà chua', 'Rau muống'] },
+      ],
+    },
+    {
+      dayIndex: 1,
+      dayName: 'Thứ 3',
+      meals: [
+        { slot: 'breakfast', customDishName: 'Mì tôm trứng xúc xích', note: 'Đậm đà 5 phút', ingredients: ['Mì tôm', 'Trứng gà', 'Xúc xích'] },
+        { slot: 'lunch', customDishName: 'Gà xào sả ớt + Canh bí đao', note: 'Thơm nức mũi', ingredients: ['Thịt gà', 'Sả', 'Ớt', 'Bí đao'] },
+        { slot: 'dinner', customDishName: 'Đậu phụ sốt cà chua', note: 'Dễ tiêu hóa', ingredients: ['Đậu phụ', 'Cà chua', 'Hành lá'] },
+      ],
+    },
+    {
+      dayIndex: 2,
+      dayName: 'Thứ 4',
+      meals: [
+        { slot: 'breakfast', customDishName: 'Bánh cuốn chả lụa', note: 'Thưởng thức sáng', ingredients: ['Bánh cuốn', 'Chả lụa'] },
+        { slot: 'lunch', customDishName: 'Bò xào cần tỏi + Canh chua cá', note: 'Bổ sung chất sắt', ingredients: ['Thịt bò', 'Cần tây', 'Tỏi', 'Cá'] },
+        { slot: 'dinner', customDishName: 'Canh sườn hầm rau củ', note: 'Ngọt nước tự nhiên', ingredients: ['Sườn heo', 'Cà rốt', 'Khoai tây'] },
+      ],
+    },
+    {
+      dayIndex: 3,
+      dayName: 'Thứ 5',
+      meals: [
+        { slot: 'breakfast', customDishName: 'Cháo sườn trứng bắc thảo', note: 'Ấm bụng sáng', ingredients: ['Gạo', 'Sườn heo', 'Trứng'] },
+        { slot: 'lunch', customDishName: 'Mực xào chua ngọt + Canh mồng tơi', note: 'Hương vị biển', ingredients: ['Mực', 'Dứa', 'Cà chua', 'Rau mồng tơi'] },
+        { slot: 'dinner', customDishName: 'Thịt kho tàu + Dưa cải chua', note: 'Chuẩn vị truyền thống', ingredients: ['Thịt ba chỉ', 'Trứng', 'Dưa cải'] },
+      ],
+    },
+    {
+      dayIndex: 4,
+      dayName: 'Thứ 6',
+      meals: [
+        { slot: 'breakfast', customDishName: 'Bún chả giò / Bún thịt nướng', note: 'Đổi vị cuối tuần', ingredients: ['Bún tươi', 'Chả giò', 'Rau sống'] },
+        { slot: 'lunch', customDishName: 'Tôm rim mặn ngọt + Canh bắp cải', note: 'Món ngon hao cơm', ingredients: ['Tôm tươi', 'Hành tỏi', 'Bắp cải'] },
+        { slot: 'dinner', customDishName: 'Gỏi gà xé phay bắp cải', note: 'Eat clean nhẹ nhàng', ingredients: ['Thịt gà', 'Bắp cải', 'Rau răm', 'Đậu phộng'] },
+      ],
+    },
+    {
+      dayIndex: 5,
+      dayName: 'Thứ 7',
+      meals: [
+        { slot: 'breakfast', customDishName: 'Phở bò tái lăn', note: 'Thưởng thức cuối tuần', ingredients: ['Bánh phở', 'Thịt bò', 'Hành lá', 'Gừng'] },
+        { slot: 'lunch', customDishName: 'Cá hồi áp chảo sốt bơ chanh', note: 'Dinh dưỡng cao cấp', ingredients: ['Cá hồi', 'Bơ', 'Chanh', 'Măng tây'] },
+        { slot: 'dinner', customDishName: 'Lẩu nấm gà lá é gia đình', note: 'Sum họp ấm cúng', ingredients: ['Gà ta', 'Nấm các loại', 'Lá é', 'Bún'] },
+      ],
+    },
+    {
+      dayIndex: 6,
+      dayName: 'Chủ Nhật',
+      meals: [
+        { slot: 'breakfast', customDishName: 'Pancake chuối yến mạch', note: 'Healthy thư thái', ingredients: ['Yến mạch', 'Chuối', 'Trứng', 'Mật ong'] },
+        { slot: 'lunch', customDishName: 'Bún bò Huế gia truyền', note: 'Nấu đãi cả nhà', ingredients: ['Bắp bò', 'Giò heo', 'Bún sợi to', 'Sả ớt'] },
+        { slot: 'dinner', customDishName: 'Salad cá ngừ sốt mè rang', note: 'Nhẹ bụng chuẩn bị tuần mới', ingredients: ['Cá ngừ hộp', 'Xà lách', 'Cà chua bi', 'Sốt mè'] },
+      ],
+    },
+  ];
+
   if (!process.env.GEMINI_API_KEY) {
-    // Return sample rich 7-day default plan
-    const sampleDays = [
-      {
-        dayIndex: 0,
-        dayName: 'Thứ 2',
-        meals: [
-          { slot: 'breakfast', customDishName: 'Bánh mì ốp la', note: 'Bữa sáng nhanh gọn', ingredients: ['Bánh mì', 'Trứng gà'] },
-          { slot: 'lunch', customDishName: 'Thịt heo rang cháy cạnh + Canh rau ngót', note: 'Cơm trưa đậm đà', ingredients: ['Thịt heo', 'Rau ngót'] },
-          { slot: 'dinner', customDishName: 'Trứng chiên cà chua + Rau cải luộc', note: 'Thanh đạm tối', ingredients: ['Trứng gà', 'Cà chua', 'Rau cải'] },
-        ],
-      },
-      {
-        dayIndex: 1,
-        dayName: 'Thứ 3',
-        meals: [
-          { slot: 'breakfast', customDishName: 'Mì tôm trứng xúc xích', note: 'Đậm đà 5 phút', ingredients: ['Mì tôm', 'Trứng gà', 'Xúc xích'] },
-          { slot: 'lunch', customDishName: 'Gà xào sả ớt + Canh bí đao', note: 'Thơm nức mũi', ingredients: ['Thịt gà', 'Sả', 'Ớt', 'Bí đao'] },
-          { slot: 'dinner', customDishName: 'Đậu phụ sốt cà chua', note: 'Dễ tiêu hóa', ingredients: ['Đậu phụ', 'Cà chua', 'Hành lá'] },
-        ],
-      },
-      {
-        dayIndex: 2,
-        dayName: 'Thứ 4',
-        meals: [
-          { slot: 'breakfast', customDishName: 'Bánh cuốn chả lụa', note: 'Mua ngoài hoặc tự làm', ingredients: ['Bánh cuốn', 'Chả lụa'] },
-          { slot: 'lunch', customDishName: 'Bò xào cần tỏi + Canh chua cá', note: 'Bổ sung sắt', ingredients: ['Thịt bò', 'Cần tây', 'Tỏi', 'Cá'] },
-          { slot: 'dinner', customDishName: 'Canh sườn hầm rau củ', note: 'Ngọt nước tự nhiên', ingredients: ['Sườn heo', 'Cà rốt', 'Khoai tây'] },
-        ],
-      },
-      {
-        dayIndex: 3,
-        dayName: 'Thứ 5',
-        meals: [
-          { slot: 'breakfast', customDishName: 'Cháo sườn trứng bắc thảo', note: 'Ấm bụng sáng', ingredients: ['Gạo', 'Sườn heo', 'Trứng'] },
-          { slot: 'lunch', customDishName: 'Mực xào chua ngọt + Canh mồng tơi', note: 'Hương vị biển', ingredients: ['Mực', 'Dứa', 'Cà chua', 'Rau mồng tơi'] },
-          { slot: 'dinner', customDishName: 'Thịt kho tàu + Dưa cải chua', note: 'Chuẩn vị truyền thống', ingredients: ['Thịt ba chỉ', 'Trứng', 'Dưa cải'] },
-        ],
-      },
-      {
-        dayIndex: 4,
-        dayName: 'Thứ 6',
-        meals: [
-          { slot: 'breakfast', customDishName: 'Bún chả giò / Bún thịt nướng', note: 'Đổi vị cuối tuần', ingredients: ['Bún tươi', 'Chả giò', 'Rau sống'] },
-          { slot: 'lunch', customDishName: 'Tôm rim mặn ngọt + Canh bắp cải', note: 'Món ngon hao cơm', ingredients: ['Tôm tươi', 'Hành tỏi', 'Bắp cải'] },
-          { slot: 'dinner', customDishName: 'Gỏi gà xé phay bắp cải', note: 'Eat clean nhẹ nhàng', ingredients: ['Thịt gà', 'Bắp cải', 'Rau răm', 'Đậu phộng'] },
-        ],
-      },
-      {
-        dayIndex: 5,
-        dayName: 'Thứ 7',
-        meals: [
-          { slot: 'breakfast', customDishName: 'Phở bò tái lăn', note: 'Thưởng thức cuối tuần', ingredients: ['Bánh phở', 'Thịt bò', 'Hành lá', 'Gừng'] },
-          { slot: 'lunch', customDishName: 'Cá hồi áp chảo sốt bơ chanh', note: 'Dinh dưỡng cao cấp', ingredients: ['Cá hồi', 'Bơ', 'Chanh', 'Măng tây'] },
-          { slot: 'dinner', customDishName: 'Lẩu nấm gà lá é gia đình', note: 'Sum họp ấm cúng', ingredients: ['Gà ta', 'Nấm các loại', 'Lá é', 'Bún'] },
-        ],
-      },
-      {
-        dayIndex: 6,
-        dayName: 'Chủ Nhật',
-        meals: [
-          { slot: 'breakfast', customDishName: 'Pancake chuối yến mạch', note: 'Healthy thư thái', ingredients: ['Yến mạch', 'Chuối', 'Trứng', 'Mật ong'] },
-          { slot: 'lunch', customDishName: 'Bún bò Huế gia truyền', note: 'Nấu đãi cả nhà', ingredients: ['Bắp bò', 'Giò heo', 'Bún sợi to', 'Sả ớt'] },
-          { slot: 'dinner', customDishName: 'Salad cá ngừ sốt mè rang', note: 'Nhẹ bụng chuẩn bị tuần mới', ingredients: ['Cá ngừ hộp', 'Xà lách', 'Cà chua bi', 'Sốt mè'] },
-        ],
-      },
-    ];
     return sampleDays;
   }
 
-  return await callGeminiFlash({ prompt });
+  try {
+    const aiResult = await callGeminiFlash({ prompt });
+    if (Array.isArray(aiResult) && aiResult.length > 0) {
+      return aiResult;
+    }
+    return sampleDays;
+  } catch (err) {
+    console.log('[AI Meal Planner] Gemini temporarily unavailable or 503, fallback to smart rule engine:', err.message);
+    return sampleDays;
+  }
 };
 
 module.exports = {
