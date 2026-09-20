@@ -75,11 +75,13 @@ const fallbackParseText = (text) => {
  * Call Google Gemini Flash API for Vision or Text
  */
 const callGeminiFlash = async ({ prompt, imageBase64, mimeType = 'image/jpeg' }) => {
-  if (!GEMINI_API_KEY) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
     throw new Error('Chưa cấu hình GEMINI_API_KEY trong .env backend');
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const modelName = 'gemini-3.6-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const contents = [];
   const parts = [{ text: prompt }];
@@ -155,7 +157,7 @@ Hãy trả về DUY NHẤT một mảng JSON (Array) gồm các đối tượng 
 Không trả về văn bản thừa nào khác ngoài JSON.
 `;
 
-  if (!GEMINI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     // Return friendly simulated sample data if no key configured yet
     return [
       { name: 'Thịt bò thăn', category: 'PROTEIN', quantity: '500g', storageLocation: 'CHILLED', suggestedDays: 2 },
@@ -174,7 +176,7 @@ Không trả về văn bản thừa nào khác ngoài JSON.
 const parseVoiceOrTextPrompt = async (text) => {
   if (!text || !text.trim()) return [];
 
-  if (!GEMINI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     // Use high accuracy local fallback parser
     const localParsed = fallbackParseText(text);
     if (localParsed.length > 0) return localParsed;
