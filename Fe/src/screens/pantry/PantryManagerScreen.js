@@ -17,6 +17,7 @@ import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import pantryApi from '../../api/pantryApi';
 import AddPantryItemModal from '../../components/pantry/AddPantryItemModal';
+import AISmartScanModal from '../../components/pantry/AISmartScanModal';
 
 const FILTER_TABS = [
   { id: 'ALL', label: 'Tất cả' },
@@ -62,6 +63,7 @@ const PantryManagerScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [aiModalVisible, setAiModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
@@ -120,6 +122,18 @@ const PantryManagerScreen = ({ navigation }) => {
       }
     }
     setEditingItem(null);
+  };
+
+  const handleSaveAIBatch = async (batchItems) => {
+    if (!currentUserId || !Array.isArray(batchItems) || batchItems.length === 0) return;
+    const res = await pantryApi.batchAddPantryItems({
+      userId: currentUserId,
+      items: batchItems,
+    });
+    if (res.success) {
+      fetchPantry();
+      Alert.alert('Thành công 🎉', `Đã cất ${res.count || batchItems.length} món vào tủ lạnh!`);
+    }
   };
 
   const handleDeleteItem = (item) => {
@@ -204,16 +218,27 @@ const PantryManagerScreen = ({ navigation }) => {
           <Text style={styles.headerSubtitle}>Quản lý & Nhắc nhở hạn sử dụng</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => {
-            setEditingItem(null);
-            setModalVisible(true);
-          }}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="add" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            style={styles.aiScanHeaderBtn}
+            onPress={() => setAiModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="sparkles" size={15} color="#FFFFFF" />
+            <Text style={styles.aiScanHeaderBtnText}>AI Quét</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => {
+              setEditingItem(null);
+              setModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -327,19 +352,30 @@ const PantryManagerScreen = ({ navigation }) => {
             <Text style={styles.emptyDesc}>
               {searchQuery
                 ? 'Không tìm thấy thực phẩm phù hợp từ khóa'
-                : 'Thêm thực phẩm bạn vừa mua để Vét Tủ nhắc bạn dùng đúng lúc nhé!'}
+                : 'Chụp hóa đơn siêu thị, nói bằng giọng nói hoặc thêm thủ công nhé!'}
             </Text>
-            <TouchableOpacity
-              style={styles.emptyAddBtn}
-              onPress={() => {
-                setEditingItem(null);
-                setModalVisible(true);
-              }}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="add" size={18} color="#FFFFFF" />
-              <Text style={styles.emptyAddBtnText}>Thêm thực phẩm ngay</Text>
-            </TouchableOpacity>
+            <View style={styles.emptyButtonsRow}>
+              <TouchableOpacity
+                style={styles.emptyAiBtn}
+                onPress={() => setAiModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                <Text style={styles.emptyAiBtnText}>✨ AI Quét hóa đơn / Giọng nói</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.emptyAddBtn}
+                onPress={() => {
+                  setEditingItem(null);
+                  setModalVisible(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={18} color={Colors.text} />
+                <Text style={styles.emptyAddBtnText}>Thêm thủ công</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <View style={styles.itemsList}>
@@ -451,6 +487,13 @@ const PantryManagerScreen = ({ navigation }) => {
         }}
         onAddSuccess={handleSaveItem}
       />
+
+      {/* AI Smart Scan & Voice Modal */}
+      <AISmartScanModal
+        visible={aiModalVisible}
+        onClose={() => setAiModalVisible(false)}
+        onSaveBatch={handleSaveAIBatch}
+      />
     </View>
   );
 };
@@ -492,6 +535,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  aiScanHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 14,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  aiScanHeaderBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   addBtn: {
     width: 38,

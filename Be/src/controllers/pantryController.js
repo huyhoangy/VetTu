@@ -150,6 +150,59 @@ exports.addPantryItem = async (req, res, next) => {
   }
 };
 
+// @desc    Batch add multiple pantry items (from AI Scan or voice)
+// @route   POST /api/pantry/batch
+// @access  Private
+exports.batchAddPantryItems = async (req, res, next) => {
+  try {
+    const { userId, items } = req.body;
+
+    if (!userId || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp danh sách thực phẩm hợp lệ',
+      });
+    }
+
+    const createdItems = [];
+    const now = new Date();
+
+    for (const item of items) {
+      if (!item.name || !item.name.trim()) continue;
+
+      let expiryDate = item.expiryDate ? new Date(item.expiryDate) : null;
+      if (!expiryDate || isNaN(expiryDate.getTime())) {
+        const days = Number(item.suggestedDays || item.days || 4);
+        const calcDate = new Date();
+        calcDate.setDate(calcDate.getDate() + days);
+        expiryDate = calcDate;
+      }
+
+      const created = await PantryItem.create({
+        userId,
+        name: item.name.trim(),
+        category: item.category || 'OTHER',
+        quantity: item.quantity ? String(item.quantity).trim() : '1 phần',
+        storageLocation: item.storageLocation || 'CHILLED',
+        purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : now,
+        expiryDate,
+        notes: item.notes ? String(item.notes).trim() : '',
+      });
+
+      createdItems.push(formatPantryItem(created));
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Đã thêm thành công ${createdItems.length} món vào tủ lạnh`,
+      count: createdItems.length,
+      data: createdItems,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Update pantry item
 // @route   PUT /api/pantry/:id
 // @access  Private

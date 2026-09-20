@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getUserPantry,
   addPantryItem,
+  batchAddPantryItems,
   updatePantryItem,
   deletePantryItem,
   checkAndCreateExpiryReminders,
@@ -12,6 +13,7 @@ router.route('/')
   .get(getUserPantry)
   .post(addPantryItem);
 
+router.post('/batch', batchAddPantryItems);
 router.post('/check-reminders', checkAndCreateExpiryReminders);
 
 router.route('/:id')

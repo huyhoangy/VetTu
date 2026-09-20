@@ -17,6 +17,10 @@ const pantryApi = {
     return axiosClient.delete(`/pantry/${id}`);
   },
 
+  batchAddPantryItems: (data) => {
+    return axiosClient.post('/pantry/batch', data);
+  },
+
   checkReminders: () => {
     return axiosClient.post('/pantry/check-reminders');
   },

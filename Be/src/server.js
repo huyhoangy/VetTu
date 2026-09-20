@@ -12,7 +12,8 @@ const app = express();
 
 // Middlewares
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
@@ -30,6 +31,7 @@ app.use('/api/chat', require('./routes/chatRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/cooking-history', require('./routes/cookingHistoryRoutes'));
 app.use('/api/pantry', require('./routes/pantryRoutes'));
+app.use('/api/ai', require('./routes/aiRoutes'));
 
 // Start background expiry notification scheduler
 const { initExpiryScheduler } = require('./services/expiryScheduler');
