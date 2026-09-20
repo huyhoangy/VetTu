@@ -270,6 +270,32 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
+        {/* Weekly Meal Planner Shortcut Card */}
+        <TouchableOpacity
+          style={styles.mealPlannerBanner}
+          onPress={() => navigation.navigate('MealPlanner')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.mealPlannerLeft}>
+            <View style={styles.mealPlannerIconBox}>
+              <Ionicons name="calendar" size={22} color="#8B5CF6" />
+            </View>
+            <View style={styles.mealPlannerInfo}>
+              <View style={styles.mealPlannerTitleRow}>
+                <Text style={styles.mealPlannerTitle}>Lên Thực Đơn Tuần & Đi Chợ</Text>
+                <View style={styles.aiTag}>
+                  <Ionicons name="sparkles" size={10} color="#FFFFFF" />
+                  <Text style={styles.aiTagText}>AI</Text>
+                </View>
+              </View>
+              <Text style={styles.mealPlannerDesc}>
+                Lên lịch 7 ngày, gom nguyên liệu đi chợ thông minh
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#8B5CF6" />
+        </TouchableOpacity>
+
         {/* Featured / Daily Recipes Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>🔥 Gợi ý món ngon hôm nay</Text>
@@ -584,6 +610,69 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 11,
     color: Colors.textSecondary,
+  },
+  mealPlannerBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EDE9FE',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 24,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  mealPlannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    paddingRight: 8,
+  },
+  mealPlannerIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F5F3FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mealPlannerInfo: {
+    flex: 1,
+  },
+  mealPlannerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  mealPlannerTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E1B4B',
+  },
+  aiTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+    gap: 2,
+  },
+  aiTagText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  mealPlannerDesc: {
+    fontSize: 11.5,
+    color: '#6B7280',
   },
   sectionHeader: {
     flexDirection: 'row',

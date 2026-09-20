@@ -217,7 +217,133 @@ Không trả về văn bản thừa nào khác ngoài JSON.
   }
 };
 
+/**
+ * AI Suggest 7-day Meal Plan based on available pantry items and healthy balance
+ */
+const suggestWeeklyMealPlan = async ({ pantryItems = [], targetDays = 7, preferences = '' }) => {
+  const pantrySummary = pantryItems.length > 0
+    ? pantryItems.map((p) => `${p.name} (SL: ${p.quantity}, vị trí: ${p.storageLocation})`).join(', ')
+    : 'Chưa có thực phẩm nào trong tủ lạnh';
+
+  const prompt = `
+Bạn là chuyên gia dinh dưỡng và đầu bếp trưởng của ứng dụng "Vét Tủ".
+Hãy lên thực đơn ăn uống ngon miệng, thuần Việt, cân bằng dinh dưỡng cho 7 ngày (từ Thứ 2 đến Chủ Nhật).
+Mỗi ngày gồm 3 bữa chính: Bữa sáng (breakfast), Bữa trưa (lunch), Bữa tối (dinner).
+
+Nguyên liệu người dùng ĐANG CÓ TRONG TỦ LẠNH (hãy ưu tiên sử dụng để tiết kiệm và tránh lãng phí):
+${pantrySummary}
+
+${preferences ? `Yêu cầu thêm từ người dùng: ${preferences}` : ''}
+
+Nhiệm vụ:
+Tạo kế hoạch 7 ngày (dayIndex từ 0 đến 6 tương ứng Thứ 2 đến Chủ Nhật).
+Trả về DUY NHẤT một mảng JSON (Array) gồm 7 phần tử theo đúng định dạng sau:
+[
+  {
+    "dayIndex": 0,
+    "dayName": "Thứ 2",
+    "meals": [
+      {
+        "slot": "breakfast",
+        "customDishName": "Bánh mì ốp la xúc xích",
+        "note": "Nhanh gọn 10 phút, giàu năng lượng",
+        "ingredients": ["Bánh mì", "Trứng gà", "Xúc xích", "Dưa leo"]
+      },
+      {
+        "slot": "lunch",
+        "customDishName": "Thịt heo kho tiêu + Canh cải thịt băm",
+        "note": "Cơm trưa đậm đà, dễ mang đi làm",
+        "ingredients": ["Thịt heo", "Thịt băm", "Rau cải", "Hành lá", "Hành tím"]
+      },
+      {
+        "slot": "dinner",
+        "customDishName": "Cá kho tộ + Canh rau muống luộc",
+        "note": "Bữa tối nhẹ bụng thanh mát",
+        "ingredients": ["Cá", "Rau muống", "Tỏi", "Chanh"]
+      }
+    ]
+  }
+]
+Đảm bảo các món ăn phong phú, không bị lặp lại đơn điệu giữa các ngày.
+Chỉ trả về JSON thuần túy, không có giải thích hay markdown code fence.
+`;
+
+  if (!process.env.GEMINI_API_KEY) {
+    // Return sample rich 7-day default plan
+    const sampleDays = [
+      {
+        dayIndex: 0,
+        dayName: 'Thứ 2',
+        meals: [
+          { slot: 'breakfast', customDishName: 'Bánh mì ốp la', note: 'Bữa sáng nhanh gọn', ingredients: ['Bánh mì', 'Trứng gà'] },
+          { slot: 'lunch', customDishName: 'Thịt heo rang cháy cạnh + Canh rau ngót', note: 'Cơm trưa đậm đà', ingredients: ['Thịt heo', 'Rau ngót'] },
+          { slot: 'dinner', customDishName: 'Trứng chiên cà chua + Rau cải luộc', note: 'Thanh đạm tối', ingredients: ['Trứng gà', 'Cà chua', 'Rau cải'] },
+        ],
+      },
+      {
+        dayIndex: 1,
+        dayName: 'Thứ 3',
+        meals: [
+          { slot: 'breakfast', customDishName: 'Mì tôm trứng xúc xích', note: 'Đậm đà 5 phút', ingredients: ['Mì tôm', 'Trứng gà', 'Xúc xích'] },
+          { slot: 'lunch', customDishName: 'Gà xào sả ớt + Canh bí đao', note: 'Thơm nức mũi', ingredients: ['Thịt gà', 'Sả', 'Ớt', 'Bí đao'] },
+          { slot: 'dinner', customDishName: 'Đậu phụ sốt cà chua', note: 'Dễ tiêu hóa', ingredients: ['Đậu phụ', 'Cà chua', 'Hành lá'] },
+        ],
+      },
+      {
+        dayIndex: 2,
+        dayName: 'Thứ 4',
+        meals: [
+          { slot: 'breakfast', customDishName: 'Bánh cuốn chả lụa', note: 'Mua ngoài hoặc tự làm', ingredients: ['Bánh cuốn', 'Chả lụa'] },
+          { slot: 'lunch', customDishName: 'Bò xào cần tỏi + Canh chua cá', note: 'Bổ sung sắt', ingredients: ['Thịt bò', 'Cần tây', 'Tỏi', 'Cá'] },
+          { slot: 'dinner', customDishName: 'Canh sườn hầm rau củ', note: 'Ngọt nước tự nhiên', ingredients: ['Sườn heo', 'Cà rốt', 'Khoai tây'] },
+        ],
+      },
+      {
+        dayIndex: 3,
+        dayName: 'Thứ 5',
+        meals: [
+          { slot: 'breakfast', customDishName: 'Cháo sườn trứng bắc thảo', note: 'Ấm bụng sáng', ingredients: ['Gạo', 'Sườn heo', 'Trứng'] },
+          { slot: 'lunch', customDishName: 'Mực xào chua ngọt + Canh mồng tơi', note: 'Hương vị biển', ingredients: ['Mực', 'Dứa', 'Cà chua', 'Rau mồng tơi'] },
+          { slot: 'dinner', customDishName: 'Thịt kho tàu + Dưa cải chua', note: 'Chuẩn vị truyền thống', ingredients: ['Thịt ba chỉ', 'Trứng', 'Dưa cải'] },
+        ],
+      },
+      {
+        dayIndex: 4,
+        dayName: 'Thứ 6',
+        meals: [
+          { slot: 'breakfast', customDishName: 'Bún chả giò / Bún thịt nướng', note: 'Đổi vị cuối tuần', ingredients: ['Bún tươi', 'Chả giò', 'Rau sống'] },
+          { slot: 'lunch', customDishName: 'Tôm rim mặn ngọt + Canh bắp cải', note: 'Món ngon hao cơm', ingredients: ['Tôm tươi', 'Hành tỏi', 'Bắp cải'] },
+          { slot: 'dinner', customDishName: 'Gỏi gà xé phay bắp cải', note: 'Eat clean nhẹ nhàng', ingredients: ['Thịt gà', 'Bắp cải', 'Rau răm', 'Đậu phộng'] },
+        ],
+      },
+      {
+        dayIndex: 5,
+        dayName: 'Thứ 7',
+        meals: [
+          { slot: 'breakfast', customDishName: 'Phở bò tái lăn', note: 'Thưởng thức cuối tuần', ingredients: ['Bánh phở', 'Thịt bò', 'Hành lá', 'Gừng'] },
+          { slot: 'lunch', customDishName: 'Cá hồi áp chảo sốt bơ chanh', note: 'Dinh dưỡng cao cấp', ingredients: ['Cá hồi', 'Bơ', 'Chanh', 'Măng tây'] },
+          { slot: 'dinner', customDishName: 'Lẩu nấm gà lá é gia đình', note: 'Sum họp ấm cúng', ingredients: ['Gà ta', 'Nấm các loại', 'Lá é', 'Bún'] },
+        ],
+      },
+      {
+        dayIndex: 6,
+        dayName: 'Chủ Nhật',
+        meals: [
+          { slot: 'breakfast', customDishName: 'Pancake chuối yến mạch', note: 'Healthy thư thái', ingredients: ['Yến mạch', 'Chuối', 'Trứng', 'Mật ong'] },
+          { slot: 'lunch', customDishName: 'Bún bò Huế gia truyền', note: 'Nấu đãi cả nhà', ingredients: ['Bắp bò', 'Giò heo', 'Bún sợi to', 'Sả ớt'] },
+          { slot: 'dinner', customDishName: 'Salad cá ngừ sốt mè rang', note: 'Nhẹ bụng chuẩn bị tuần mới', ingredients: ['Cá ngừ hộp', 'Xà lách', 'Cà chua bi', 'Sốt mè'] },
+        ],
+      },
+    ];
+    return sampleDays;
+  }
+
+  return await callGeminiFlash({ prompt });
+};
+
 module.exports = {
   scanFoodOrReceiptImage,
   parseVoiceOrTextPrompt,
+  suggestWeeklyMealPlan,
 };
+
