@@ -8,8 +8,8 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  Share,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import mealPlanApi from '../../api/mealPlanApi';
@@ -52,7 +52,7 @@ const WeeklyGroceryModal = ({ visible, onClose, weekStartDate }) => {
     }));
   };
 
-  const handleCopyClipboard = async () => {
+  const handleShareList = async () => {
     if (!data.neededToBuy || data.neededToBuy.length === 0) {
       Alert.alert('Thông báo', 'Không có nguyên liệu nào cần mua thêm trong tuần này!');
       return;
@@ -67,13 +67,15 @@ const WeeklyGroceryModal = ({ visible, onClose, weekStartDate }) => {
       })
       .join('\n');
 
-    const copyText = `🛒 DANH SÁCH ĐI CHỢ TUẦN (${weekStartDate || 'Tuần này'})\n(Tổng cộng ${data.neededToBuy.length} nguyên liệu cần mua)\n\n${itemsText}\n\n-- Được tạo bởi Vét Tủ 🥦🍳`;
+    const messageText = `🛒 DANH SÁCH ĐI CHỢ TUẦN (${weekStartDate || 'Tuần này'})\n(Tổng cộng ${data.neededToBuy.length} nguyên liệu cần mua)\n\n${itemsText}\n\n-- Được tạo bởi Vét Tủ 🥦🍳`;
 
     try {
-      await Clipboard.setStringAsync(copyText);
-      Alert.alert('Thành công! 🎉', 'Đã sao chép danh sách đi chợ vào bộ nhớ tạm. Bạn có thể gửi qua Zalo, Messenger hoặc Ghi chú!');
+      await Share.share({
+        message: messageText,
+        title: 'Danh Sách Đi Chợ Tuần',
+      });
     } catch (e) {
-      Alert.alert('Thông báo', 'Không thể sao chép văn bản.');
+      Alert.alert('Thông báo', 'Không thể chia sẻ danh sách.');
     }
   };
 
@@ -253,11 +255,11 @@ const WeeklyGroceryModal = ({ visible, onClose, weekStartDate }) => {
           <View style={styles.bottomBar}>
             <TouchableOpacity
               style={styles.copyBtn}
-              onPress={handleCopyClipboard}
+              onPress={handleShareList}
               activeOpacity={0.8}
             >
-              <Ionicons name="copy-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.copyBtnText}>Sao chép danh sách đi chợ</Text>
+              <Ionicons name="share-social-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.copyBtnText}>Chia sẻ / Sao chép danh sách đi chợ</Text>
             </TouchableOpacity>
           </View>
         </View>
