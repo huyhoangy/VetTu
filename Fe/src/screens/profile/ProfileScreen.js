@@ -81,6 +81,7 @@ const ProfileScreen = ({ navigation }) => {
     {
       title: 'Hoạt động của bạn',
       items: [
+        { id: 'meal_planner', title: 'Thực đơn tuần & Đi chợ', icon: 'calendar-outline', badge: 'AI', color: '#8B5CF6' },
         { id: 'pantry_inventory', title: 'Tủ lạnh & Hạn thực phẩm', icon: 'snow-outline', badge: pantryStats.expiringSoon > 0 ? `${pantryStats.expiringSoon} món cần dùng` : (pantryStats.total > 0 ? `${pantryStats.total} món` : null), color: '#0EA5E9' },
         { id: 'messages', title: 'Tin nhắn & Lịch sử nhận món', icon: 'chatbubble-ellipses-outline', badge: 'Mới', color: '#3B82F6' },
         { id: 'favorites', title: 'Món ăn yêu thích', icon: 'heart', badge: favoritesCount > 0 ? `${favoritesCount}` : null, color: '#EF4444' },
@@ -166,7 +167,9 @@ const ProfileScreen = ({ navigation }) => {
                   ]}
                   activeOpacity={0.7}
                   onPress={() => {
-                    if (item.id === 'pantry_inventory') {
+                    if (item.id === 'meal_planner') {
+                      navigation.navigate('MealPlanner');
+                    } else if (item.id === 'pantry_inventory') {
                       navigation.navigate('PantryManager');
                     } else if (item.id === 'messages') {
                       navigation.navigate('ConversationsList');

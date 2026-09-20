@@ -13,6 +13,7 @@ import CreateShareScreen from '../screens/community/CreateShareScreen';
 import PantryManagerScreen from '../screens/pantry/PantryManagerScreen';
 import PantryScreen from '../screens/pantry/PantryScreen';
 import RecipeResultsScreen from '../screens/recipe/RecipeResultsScreen';
+import MealPlannerScreen from '../screens/mealplan/MealPlannerScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -33,6 +34,7 @@ const ProfileStackNavigator = () => {
       <Stack.Screen name="MySharedItems" component={MySharedItemsScreen} />
       <Stack.Screen name="ShareDetail" component={ShareDetailScreen} />
       <Stack.Screen name="CreateShare" component={CreateShareScreen} />
+      <Stack.Screen name="MealPlanner" component={MealPlannerScreen} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} />
       <Stack.Screen name="ConversationsList" component={ConversationsListScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
