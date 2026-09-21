@@ -6,6 +6,7 @@ import ShareDetailScreen from '../screens/community/ShareDetailScreen';
 import MySharedItemsScreen from '../screens/community/MySharedItemsScreen';
 import ChatScreen from '../screens/chat/ChatScreen';
 import NotificationScreen from '../screens/notification/NotificationScreen';
+import UserReputationScreen from '../screens/profile/UserReputationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +21,7 @@ const CommunityStackNavigator = () => {
       <Stack.Screen name="CommunityMain" component={CommunityScreen} />
       <Stack.Screen name="CreateShare" component={CreateShareScreen} />
       <Stack.Screen name="ShareDetail" component={ShareDetailScreen} />
+      <Stack.Screen name="UserReputation" component={UserReputationScreen} />
       <Stack.Screen name="MySharedItems" component={MySharedItemsScreen} />
       <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="Notifications" component={NotificationScreen} />

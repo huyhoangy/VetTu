@@ -128,10 +128,15 @@ const ProfileScreen = ({ navigation }) => {
               <Ionicons name="shield-checkmark" size={14} color="#10B981" />
               <Text style={styles.trustBadgeText}>Đã xác thực</Text>
             </View>
-            <View style={styles.ratingBadge}>
+            <TouchableOpacity
+              style={styles.ratingBadge}
+              onPress={() => navigation.navigate('UserReputation', { userId: currentUserId })}
+              activeOpacity={0.7}
+            >
               <Ionicons name="star" size={14} color="#F59E0B" />
-              <Text style={styles.ratingBadgeText}>{user?.rating || '5.0'} Uy tín</Text>
-            </View>
+              <Text style={styles.ratingBadgeText}>{Number(user?.rating || 5.0).toFixed(1)} Uy tín</Text>
+              <Ionicons name="chevron-forward" size={12} color="#D97706" />
+            </TouchableOpacity>
           </View>
 
           {/* Stats Bar */}
@@ -146,10 +151,14 @@ const ProfileScreen = ({ navigation }) => {
               <Text style={styles.statLabel}>Đã chia sẻ</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>5.0</Text>
-              <Text style={styles.statLabel}>Đánh giá</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.statItem}
+              onPress={() => navigation.navigate('UserReputation', { userId: currentUserId })}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.statNumber}>{Number(user?.rating || 5.0).toFixed(1)}</Text>
+              <Text style={styles.statLabel}>Đánh giá ★</Text>
+            </TouchableOpacity>
           </View>
         </View>
 

@@ -17,6 +17,7 @@ import shareApi from '../../api/shareApi';
 import chatApi from '../../api/chatApi';
 import { useAuth } from '../../context/AuthContext';
 import StatusUpdateModal from '../../components/common/StatusUpdateModal';
+import ReviewRatingModal from '../../components/community/ReviewRatingModal';
 
 const ShareDetailScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
@@ -28,6 +29,7 @@ const ShareDetailScreen = ({ navigation, route }) => {
   const [chatStarting, setChatStarting] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -255,7 +257,18 @@ const ShareDetailScreen = ({ navigation, route }) => {
 
           {/* Donor Profile Card */}
           <Text style={styles.sectionHeading}>Thông tin người chia sẻ</Text>
-          <View style={styles.donorCard}>
+          <TouchableOpacity
+            style={styles.donorCard}
+            onPress={() => {
+              if (donorId) {
+                navigation.navigate('UserReputation', {
+                  userId: donorId,
+                  userName: share.createdBy?.name || 'Hàng xóm thân thiện',
+                });
+              }
+            }}
+            activeOpacity={0.8}
+          >
             <Image
               source={{
                 uri:
@@ -269,12 +282,28 @@ const ShareDetailScreen = ({ navigation, route }) => {
               <View style={styles.donorMeta}>
                 <View style={styles.ratingBadge}>
                   <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={styles.ratingText}>{share.createdBy?.rating || '5.0'}</Text>
+                  <Text style={styles.ratingText}>
+                    {share.createdBy?.rating ? share.createdBy.rating.toFixed(1) : '5.0'}
+                  </Text>
                 </View>
-                <Text style={styles.verifiedText}>• Đã chia sẻ 3 lần</Text>
+                <Text style={styles.verifiedText}>
+                  {share.createdBy?.ratingCount ? `• ${share.createdBy.ratingCount} đánh giá` : '• Thành viên uy tín'}
+                </Text>
               </View>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+          </TouchableOpacity>
+
+          {!isMyPost && (
+            <TouchableOpacity
+              style={styles.rateDonorRowBtn}
+              onPress={() => setReviewModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="star-outline" size={16} color={Colors.primary} />
+              <Text style={styles.rateDonorRowText}>Viết đánh giá cho người tặng này</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -376,6 +405,27 @@ const ShareDetailScreen = ({ navigation, route }) => {
         itemTitle={share?.title}
         onSelectStatus={handleSelectStatus}
         loading={statusUpdating}
+      />
+
+      {/* Review Rating Modal */}
+      <ReviewRatingModal
+        visible={reviewModalVisible}
+        onClose={() => setReviewModalVisible(false)}
+        targetUser={typeof share?.createdBy === 'object' ? share.createdBy : { _id: donorId, name: 'Người chia sẻ' }}
+        foodShare={share}
+        currentUserId={myId}
+        onSuccess={(newReview) => {
+          if (share?.createdBy && typeof share.createdBy === 'object') {
+            // locally update rating
+            setShare((prev) => ({
+              ...prev,
+              createdBy: {
+                ...prev.createdBy,
+                rating: newReview?.targetUserRating || prev.createdBy.rating,
+              },
+            }));
+          }
+        }}
       />
     </View>
   );
@@ -700,6 +750,24 @@ const styles = StyleSheet.create({
   backBtnText: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  rateDonorRowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFF7ED',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    marginBottom: 20,
+  },
+  rateDonorRowText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
   },
 });
 

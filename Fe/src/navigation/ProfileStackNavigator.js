@@ -14,6 +14,7 @@ import PantryManagerScreen from '../screens/pantry/PantryManagerScreen';
 import PantryScreen from '../screens/pantry/PantryScreen';
 import RecipeResultsScreen from '../screens/recipe/RecipeResultsScreen';
 import MealPlannerScreen from '../screens/mealplan/MealPlannerScreen';
+import UserReputationScreen from '../screens/profile/UserReputationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +27,7 @@ const ProfileStackNavigator = () => {
       }}
     >
       <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="UserReputation" component={UserReputationScreen} />
       <Stack.Screen name="PantryManager" component={PantryManagerScreen} />
       <Stack.Screen name="Pantry" component={PantryScreen} />
       <Stack.Screen name="RecipeResults" component={RecipeResultsScreen} />

@@ -10,6 +10,7 @@ import CookingHistoryScreen from '../screens/cooking/CookingHistoryScreen';
 import PantryManagerScreen from '../screens/pantry/PantryManagerScreen';
 import CreateShareScreen from '../screens/community/CreateShareScreen';
 import MealPlannerScreen from '../screens/mealplan/MealPlannerScreen';
+import UserReputationScreen from '../screens/profile/UserReputationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,6 +23,7 @@ const HomeStackNavigator = () => {
       }}
     >
       <Stack.Screen name="HomeDashboard" component={HomeScreen} />
+      <Stack.Screen name="UserReputation" component={UserReputationScreen} />
       <Stack.Screen name="Pantry" component={PantryScreen} />
       <Stack.Screen name="PantryManager" component={PantryManagerScreen} />
       <Stack.Screen name="MealPlanner" component={MealPlannerScreen} />

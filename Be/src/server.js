@@ -33,6 +33,7 @@ app.use('/api/cooking-history', require('./routes/cookingHistoryRoutes'));
 app.use('/api/pantry', require('./routes/pantryRoutes'));
 app.use('/api/ai', require('./routes/aiRoutes'));
 app.use('/api/meal-plans', require('./routes/mealPlanRoutes'));
+app.use('/api/reviews', require('./routes/reviewRoutes'));
 
 // Start background expiry notification scheduler
 const { initExpiryScheduler } = require('./services/expiryScheduler');
