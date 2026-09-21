@@ -236,8 +236,8 @@ const MealPlannerScreen = ({ navigation }) => {
   // AI Suggest 7-day Meal Plan
   const handleAiSuggest = () => {
     Alert.alert(
-      '✨ AI Gợi ý thực đơn tuần',
-      'Gemini AI sẽ tự động phân tích thực phẩm trong tủ lạnh của bạn và lên thực đơn trọn vẹn 7 ngày (Sáng, Trưa, Tối) cân bằng dinh dưỡng và tiết kiệm nhất. Bạn có muốn tạo mới không?',
+      'Gợi ý thực đơn tuần',
+      'Hệ thống sẽ tự động phân tích thực phẩm trong tủ lạnh của bạn để lên thực đơn trọn vẹn 7 ngày (Sáng, Trưa, Tối) cân bằng dinh dưỡng và tiết kiệm. Bạn có muốn tạo mới không?',
       [
         { text: 'Để sau', style: 'cancel' },
         {
@@ -250,10 +250,10 @@ const MealPlannerScreen = ({ navigation }) => {
               });
               if (res && res.data) {
                 setPlanData(res.data);
-                Alert.alert('Thành công! 🎉', 'AI đã hoàn thiện thực đơn tuần cho bạn.');
+                Alert.alert('Thành công', 'Đã tạo thực đơn tuần mới cho bạn.');
               }
             } catch (err) {
-              Alert.alert('Lỗi AI', err.message || 'Không thể tạo thực đơn tuần từ AI.');
+              Alert.alert('Thông báo', err.message || 'Không thể tạo thực đơn tuần lúc này.');
             } finally {
               setAiGenerating(false);
             }
@@ -280,25 +280,22 @@ const MealPlannerScreen = ({ navigation }) => {
             <Ionicons name="arrow-back" size={22} color="#1E293B" />
           </TouchableOpacity>
           <View>
-            <Text style={styles.headerTitle}>📅 Lên Thực Đơn Tuần</Text>
+            <Text style={styles.headerTitle}>Thực Đơn Tuần</Text>
             <Text style={styles.headerSubtitle}>Ăn ngon, đủ chất, tiết kiệm</Text>
           </View>
         </View>
 
         <View style={styles.headerActions}>
           <TouchableOpacity
-            style={styles.actionBtnAi}
+            style={styles.actionBtnSuggest}
             onPress={handleAiSuggest}
             disabled={aiGenerating}
             activeOpacity={0.8}
           >
             {aiGenerating ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={Colors.primary} />
             ) : (
-              <>
-                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-                <Text style={styles.actionBtnAiText}>AI gợi ý</Text>
-              </>
+              <Text style={styles.actionBtnSuggestText}>Gợi ý thực đơn</Text>
             )}
           </TouchableOpacity>
 
@@ -605,26 +602,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  actionBtnAi: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#8B5CF6',
+  actionBtnSuggest: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 5,
+    paddingVertical: 7,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  actionBtnAiText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  actionBtnSuggestText: {
+    color: Colors.primary,
+    fontSize: 12.5,
     fontWeight: '700',
   },
   actionBtnCart: {
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: '#FFF7ED',
+    padding: 7,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#FFEDD5',
+    borderColor: '#E2E8F0',
   },
   contentScroll: {
     flex: 1,

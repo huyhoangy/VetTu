@@ -249,20 +249,15 @@ const AISmartScanModal = ({ visible, onClose, onSaveBatch }) => {
 
           {/* Header */}
           <View style={styles.headerRow}>
-            <View style={styles.headerTitleRow}>
-              <View style={styles.aiBadge}>
-                <Ionicons name="sparkles" size={14} color="#FFFFFF" />
-              </View>
-              <View>
-                <Text style={styles.title}>
-                  {step === 'INPUT' ? 'AI Quét Thông Minh' : 'Duyệt kết quả AI'}
-                </Text>
-                <Text style={styles.subtitle}>
-                  {step === 'INPUT'
-                    ? 'Nhận diện hóa đơn hoặc giọng nói tự động'
-                    : `Tìm thấy ${extractedItems.length} thực phẩm, đã chọn ${selectedCount}`}
-                </Text>
-              </View>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text style={styles.title}>
+                {step === 'INPUT' ? 'Nhập Thực Phẩm Nhanh' : 'Duyệt Danh Sách Thực Phẩm'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {step === 'INPUT'
+                  ? 'Nhận diện tự động từ hóa đơn hoặc giọng nói'
+                  : `Tìm thấy ${extractedItems.length} thực phẩm, đã chọn ${selectedCount}`}
+              </Text>
             </View>
 
             <TouchableOpacity onPress={handleClose} style={styles.closeBtn} activeOpacity={0.7}>

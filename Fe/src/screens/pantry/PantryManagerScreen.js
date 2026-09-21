@@ -220,12 +220,11 @@ const PantryManagerScreen = ({ navigation }) => {
 
         <View style={styles.headerRightActions}>
           <TouchableOpacity
-            style={styles.aiScanHeaderBtn}
+            style={styles.quickScanBtn}
             onPress={() => setAiModalVisible(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="sparkles" size={15} color="#FFFFFF" />
-            <Text style={styles.aiScanHeaderBtnText}>AI Quét</Text>
+            <Text style={styles.quickScanBtnText}>Quét hoá đơn</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -236,7 +235,7 @@ const PantryManagerScreen = ({ navigation }) => {
             }}
             activeOpacity={0.8}
           >
-            <Ionicons name="add" size={22} color="#FFFFFF" />
+            <Ionicons name="add" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -541,24 +540,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  aiScanHeaderBtn: {
-    flexDirection: 'row',
+  quickScanBtn: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 14,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  aiScanHeaderBtnText: {
-    fontSize: 12,
+  quickScanBtnText: {
+    fontSize: 12.5,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: Colors.primary,
   },
   addBtn: {
     width: 38,

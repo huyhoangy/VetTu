@@ -193,12 +193,12 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.heroTop}>
             <Text style={styles.heroEmoji}>🥦🍳🥘</Text>
             <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>AI Gợi ý chuẩn vị</Text>
+              <Text style={styles.heroBadgeText}>Gợi ý chuẩn vị</Text>
             </View>
           </View>
           <Text style={styles.heroTitle}>Tủ lạnh hôm nay còn gì?</Text>
           <Text style={styles.heroDesc}>
-            Chọn nhanh các nguyên liệu bạn đang có để thuật toán gợi ý ngay món ăn phù hợp nhất!
+            Chọn nhanh các nguyên liệu bạn đang có để tìm ngay món ăn phù hợp nhất!
           </Text>
           <TouchableOpacity
             style={styles.heroButton}
@@ -206,7 +206,7 @@ const HomeScreen = ({ navigation }) => {
             activeOpacity={0.85}
           >
             <Text style={styles.heroButtonText}>Bắt đầu Vét Tủ</Text>
-            <Ionicons name="rocket-outline" size={20} color="#FFFFFF" />
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
@@ -278,22 +278,16 @@ const HomeScreen = ({ navigation }) => {
         >
           <View style={styles.mealPlannerLeft}>
             <View style={styles.mealPlannerIconBox}>
-              <Ionicons name="calendar" size={22} color="#8B5CF6" />
+              <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
             </View>
             <View style={styles.mealPlannerInfo}>
-              <View style={styles.mealPlannerTitleRow}>
-                <Text style={styles.mealPlannerTitle}>Lên Thực Đơn Tuần & Đi Chợ</Text>
-                <View style={styles.aiTag}>
-                  <Ionicons name="sparkles" size={10} color="#FFFFFF" />
-                  <Text style={styles.aiTagText}>AI</Text>
-                </View>
-              </View>
+              <Text style={styles.mealPlannerTitle}>Thực Đơn Tuần & Đi Chợ</Text>
               <Text style={styles.mealPlannerDesc}>
-                Lên lịch 7 ngày, gom nguyên liệu đi chợ thông minh
+                Lên lịch 7 ngày và tự động tổng hợp nguyên liệu cần mua
               </Text>
             </View>
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#8B5CF6" />
+          <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
         </TouchableOpacity>
 
         {/* Featured / Daily Recipes Section */}
