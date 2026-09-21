@@ -30,6 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 .system_generated/
 *.log
+*.exe
 .DS_Store
 .idea/
 .vscode/
