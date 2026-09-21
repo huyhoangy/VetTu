@@ -17,6 +17,7 @@ import recipeApi from '../../api/recipeApi';
 import cookingHistoryApi from '../../api/cookingHistoryApi';
 import shareApi from '../../api/shareApi';
 import pantryApi from '../../api/pantryApi';
+import reviewApi from '../../api/reviewApi';
 
 const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -25,12 +26,24 @@ const ProfileScreen = ({ navigation }) => {
   const [cookedCount, setCookedCount] = useState(0);
   const [mySharesCount, setMySharesCount] = useState(0);
   const [pantryStats, setPantryStats] = useState({ total: 0, expiringSoon: 0 });
+  const [rating, setRating] = useState(user?.rating || 5.0);
+  const [ratingCount, setRatingCount] = useState(user?.ratingCount || 0);
 
   const currentUserId = user?._id || user?.id;
 
   useFocusEffect(
     useCallback(() => {
       if (currentUserId) {
+        // Fetch real-time reputation & accurate average rating
+        reviewApi.getUserReviews(currentUserId).then((res) => {
+          if (res.success && res.data) {
+            const freshRating = res.data.stats?.rating ?? res.data.user?.rating ?? 5.0;
+            const freshCount = res.data.stats?.totalReviews ?? res.data.user?.ratingCount ?? 0;
+            setRating(Number(freshRating));
+            setRatingCount(Number(freshCount));
+          }
+        }).catch(() => {});
+
         // Fetch favorites count
         recipeApi.getFavorites(currentUserId).then((res) => {
           if (res.success && res.data) {
@@ -134,7 +147,9 @@ const ProfileScreen = ({ navigation }) => {
               activeOpacity={0.7}
             >
               <Ionicons name="star" size={14} color="#F59E0B" />
-              <Text style={styles.ratingBadgeText}>{Number(user?.rating || 5.0).toFixed(1)} Uy tín</Text>
+              <Text style={styles.ratingBadgeText}>
+                {rating.toFixed(1)} {ratingCount > 0 ? `(${ratingCount})` : 'Uy tín'}
+              </Text>
               <Ionicons name="chevron-forward" size={12} color="#D97706" />
             </TouchableOpacity>
           </View>
@@ -156,8 +171,10 @@ const ProfileScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('UserReputation', { userId: currentUserId })}
               activeOpacity={0.7}
             >
-              <Text style={styles.statNumber}>{Number(user?.rating || 5.0).toFixed(1)}</Text>
-              <Text style={styles.statLabel}>Đánh giá ★</Text>
+              <Text style={styles.statNumber}>{rating.toFixed(1)}</Text>
+              <Text style={styles.statLabel}>
+                {ratingCount > 0 ? `${ratingCount} đánh giá ★` : 'Đánh giá ★'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

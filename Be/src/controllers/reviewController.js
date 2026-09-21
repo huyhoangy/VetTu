@@ -101,6 +101,20 @@ const getUserReviews = async (req, res, next) => {
       .populate('fromUser', 'name avatar rating')
       .populate('foodShare', 'title quantity');
 
+    const totalReviews = reviews.length;
+    let avgRating = 5.0;
+    if (totalReviews > 0) {
+      const sumRating = reviews.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+      avgRating = Number((sumRating / totalReviews).toFixed(1));
+    }
+
+    // Keep user document in sync
+    if (user.rating !== avgRating || user.ratingCount !== totalReviews) {
+      user.rating = avgRating;
+      user.ratingCount = totalReviews;
+      await user.save();
+    }
+
     // Rating star distribution
     const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
     const tagFreq = {};
@@ -126,7 +140,7 @@ const getUserReviews = async (req, res, next) => {
     const badges = [];
     const giftsSharedCount = await FoodShare.countDocuments({ createdBy: userId, status: 'COMPLETED' });
 
-    if (giftsSharedCount >= 1 || reviews.length >= 1) {
+    if (giftsSharedCount >= 1 || totalReviews >= 1) {
       badges.push({
         id: 'food_saver',
         title: 'Chiến binh Vét Tủ',
@@ -136,7 +150,7 @@ const getUserReviews = async (req, res, next) => {
       });
     }
 
-    if (user.rating >= 4.5 && reviews.length >= 1) {
+    if (avgRating >= 4.5 && totalReviews >= 1) {
       badges.push({
         id: 'super_punctual',
         title: 'Đúng Hẹn & Chu Đáo',
@@ -146,7 +160,7 @@ const getUserReviews = async (req, res, next) => {
       });
     }
 
-    if (user.rating >= 4.8 && reviews.length >= 2) {
+    if (avgRating >= 4.8 && totalReviews >= 2) {
       badges.push({
         id: 'generous_neighbor',
         title: 'Người Hàng Xóm Hào Phóng',
@@ -161,8 +175,8 @@ const getUserReviews = async (req, res, next) => {
       data: {
         user,
         stats: {
-          rating: user.rating || 5.0,
-          totalReviews: reviews.length,
+          rating: avgRating,
+          totalReviews,
           giftsSharedCount,
           breakdown,
         },
