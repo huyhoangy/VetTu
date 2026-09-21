@@ -140,10 +140,15 @@ const ProfileScreen = ({ navigation }) => {
 
           <View style={styles.badgeRow}>
             {user?.isVerified ? (
-              <View style={styles.trustBadge}>
+              <TouchableOpacity
+                style={styles.trustBadge}
+                onPress={() => setVerificationModalVisible(true)}
+                activeOpacity={0.7}
+              >
                 <Ionicons name="shield-checkmark" size={14} color="#10B981" />
                 <Text style={styles.trustBadgeText}>Đã xác thực</Text>
-              </View>
+                <Ionicons name="checkmark-circle" size={12} color="#059669" />
+              </TouchableOpacity>
             ) : (
               <TouchableOpacity
                 style={styles.unverifiedBadge}

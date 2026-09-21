@@ -33,7 +33,11 @@ const PhoneVerificationModal = ({
 
   useEffect(() => {
     if (visible) {
-      setStep(1);
+      if (currentUser?.isVerified) {
+        setStep(3);
+      } else {
+        setStep(1);
+      }
       setOtpCode('');
       setSessionInfo(null);
       setLoading(false);
@@ -260,9 +264,15 @@ const PhoneVerificationModal = ({
                 <Ionicons name="shield-checkmark" size={48} color="#10B981" />
               </View>
 
-              <Text style={styles.successTitle}>Xác Thực Thành Công! 🎉</Text>
+              <Text style={styles.successTitle}>
+                {currentUser?.isVerified ? 'Tài Khoản Đã Xác Thực ⭐' : 'Xác Thực Thành Công! 🎉'}
+              </Text>
               <Text style={styles.successDesc}>
-                Số điện thoại <Text style={styles.boldText}>{formatPhoneNumberE164(phone)}</Text> đã được liên kết chính chủ. Tài khoản của bạn đã có Huy hiệu Tích Xanh bảo chứng uy tín trong cộng đồng Vét Tủ.
+                Số điện thoại{' '}
+                <Text style={styles.boldText}>
+                  {formatPhoneNumberE164(phone || currentUser?.phone)}
+                </Text>{' '}
+                đã được liên kết và xác minh chính chủ thành công. Tài khoản của bạn được bảo chứng uy tín trong cộng đồng Vét Tủ.
               </Text>
 
               <View style={styles.verifiedPreviewBadge}>
@@ -275,7 +285,7 @@ const PhoneVerificationModal = ({
                 onPress={onClose}
                 activeOpacity={0.85}
               >
-                <Text style={styles.successBtnText}>Hoàn tất</Text>
+                <Text style={styles.successBtnText}>Đóng màn hình</Text>
               </TouchableOpacity>
             </View>
           )}
