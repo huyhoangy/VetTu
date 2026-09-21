@@ -74,7 +74,7 @@ const fallbackParseText = (text) => {
 /**
  * Call Google Gemini Flash API for Vision or Text with Multi-Model Fallback
  */
-const callGeminiFlash = async ({ prompt, imageBase64, mimeType = 'image/jpeg' }) => {
+const callGeminiFlash = async ({ prompt, imageBase64, mimeType = 'image/jpeg', temperature = 0.85 }) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('Chưa cấu hình GEMINI_API_KEY trong .env backend');
@@ -114,7 +114,7 @@ const callGeminiFlash = async ({ prompt, imageBase64, mimeType = 'image/jpeg' })
         body: JSON.stringify({
           contents,
           generationConfig: {
-            temperature: 0.3,
+            temperature: temperature || 0.85,
             responseMimeType: 'application/json',
           },
         }),
@@ -124,7 +124,6 @@ const callGeminiFlash = async ({ prompt, imageBase64, mimeType = 'image/jpeg' })
         const errorText = await response.text();
         console.log(`[Gemini API] Model ${modelName} returned status ${response.status}: ${errorText}`);
         lastError = new Error(`Gemini API error (${response.status}): ${errorText}`);
-        // If 503 (high demand) or 429 (rate limit) or 404 (not found), try next model candidate
         continue;
       }
 
@@ -176,7 +175,6 @@ Không trả về văn bản thừa nào khác ngoài JSON.
 `;
 
   if (!process.env.GEMINI_API_KEY) {
-    // Return friendly simulated sample data if no key configured yet
     return [
       { name: 'Thịt bò thăn', category: 'PROTEIN', quantity: '500g', storageLocation: 'CHILLED', suggestedDays: 2 },
       { name: 'Rau muống', category: 'VEGGIES', quantity: '1 bó', storageLocation: 'CHILLED', suggestedDays: 3 },
@@ -185,7 +183,7 @@ Không trả về văn bản thừa nào khác ngoài JSON.
     ];
   }
 
-  return await callGeminiFlash({ prompt, imageBase64, mimeType });
+  return await callGeminiFlash({ prompt, imageBase64, mimeType, temperature: 0.2 });
 };
 
 /**
@@ -195,7 +193,6 @@ const parseVoiceOrTextPrompt = async (text) => {
   if (!text || !text.trim()) return [];
 
   if (!process.env.GEMINI_API_KEY) {
-    // Use high accuracy local fallback parser
     const localParsed = fallbackParseText(text);
     if (localParsed.length > 0) return localParsed;
 
@@ -224,7 +221,7 @@ Không trả về văn bản thừa nào khác ngoài JSON.
 `;
 
   try {
-    return await callGeminiFlash({ prompt });
+    return await callGeminiFlash({ prompt, temperature: 0.2 });
   } catch (err) {
     console.log('Gemini text parse fallback to local rule engine:', err.message);
     const local = fallbackParseText(text);
@@ -236,6 +233,118 @@ Không trả về văn bản thừa nào khác ngoài JSON.
 };
 
 /**
+ * Rich culinary dictionary for dynamic randomized weekly meal generation
+ */
+const BREAKFAST_POOL = [
+  { name: 'Bánh mì ốp la xúc xích', note: 'Nhanh gọn 10p, giàu năng lượng', ingredients: ['Bánh mì', 'Trứng gà', 'Xúc xích', 'Dưa leo'] },
+  { name: 'Phở bò tái lăn', note: 'Hương vị truyền thống thơm lừng', ingredients: ['Bánh phở', 'Thịt bò', 'Hành lá', 'Gừng'] },
+  { name: 'Bún chả giò / Bún thịt nướng', note: 'Đổi vị đầu tuần tươi mát', ingredients: ['Bún tươi', 'Chả giò', 'Thịt heo', 'Rau sống'] },
+  { name: 'Cháo sườn trứng bắc thảo', note: 'Ấm bụng sáng, dễ tiêu hóa', ingredients: ['Gạo tẻ', 'Sườn heo', 'Trứng bắc thảo', 'Hành lá'] },
+  { name: 'Bánh cuốn chả lụa', note: 'Thanh đạm nhẹ nhàng', ingredients: ['Bánh cuốn', 'Chả lụa', 'Hành phi', 'Rau giá'] },
+  { name: 'Mì tôm trứng thịt băm', note: 'Đậm đà 5 phút cấp tốc', ingredients: ['Mì tôm', 'Trứng gà', 'Thịt băm', 'Cải ngọt'] },
+  { name: 'Hủ tiếu Nam Vang tôm thịt', note: 'Nước lèo ngọt thanh tự nhiên', ingredients: ['Hủ tiếu', 'Tôm tươi', 'Thịt heo', 'Hẹ lá'] },
+  { name: 'Xôi gà xé nấm hương', note: 'No lâu, dẻo thơm nức mũi', ingredients: ['Nếp', 'Thịt gà', 'Nấm hương', 'Hành phi'] },
+  { name: 'Bánh mì xíu mại sốt cà chua', note: 'Đậm đà chấm bánh mì nóng', ingredients: ['Bánh mì', 'Thịt băm', 'Cà chua', 'Hành tây'] },
+  { name: 'Bún bò Huế gia truyền', note: 'Cay nồng đậm đà sảng khoái', ingredients: ['Bún sợi to', 'Bắp bò', 'Sả', 'Mắm ruốc'] },
+  { name: 'Pancake chuối yến mạch', note: 'Eat clean healthy ít calo', ingredients: ['Yến mạch', 'Chuối', 'Trứng gà', 'Mật ong'] },
+  { name: 'Bánh bao nhân thịt trứng cút', note: 'Tiện lợi mang đi làm', ingredients: ['Bánh bao', 'Trứng cút', 'Thịt nạc'] },
+  { name: 'Nui xào bò sốt cà chua', note: 'Hấp dẫn, đủ chất cho cả nhà', ingredients: ['Nui', 'Thịt bò', 'Cà chua', 'Hành tây'] },
+  { name: 'Cháo yến mạch ức gà xé', note: 'Giảm cân giữ dáng bổ dưỡng', ingredients: ['Yến mạch', 'Ức gà', 'Cà rốt', 'Hành hoa'] },
+  { name: 'Bánh mì chảo thập cẩm', note: 'Trứng, pate, xúc xích béo ngậy', ingredients: ['Bánh mì', 'Trứng gà', 'Pate', 'Xúc xích', 'Bơ'] },
+  { name: 'Bún riêu cua đồng', note: 'Vị chua thanh mộc mạc', ingredients: ['Bún tươi', 'Cua đồng', 'Đậu phụ', 'Cà chua', 'Rau sống'] },
+];
+
+const LUNCH_POOL = [
+  { name: 'Thịt heo rang cháy cạnh + Canh cải ngọt thịt băm', note: 'Cơm trưa đậm đà đưa cơm', ingredients: ['Thịt ba chỉ', 'Thịt băm', 'Rau cải', 'Hành lá'] },
+  { name: 'Gà xào sả ớt + Canh bí đao nấu tôm', note: 'Thơm nức mũi, thanh nhiệt', ingredients: ['Thịt gà', 'Sả', 'Ớt', 'Bí đao', 'Tôm tươi'] },
+  { name: 'Bò xào cần tỏi + Canh chua cá lóc', note: 'Bổ sung chất sắt và vitamin', ingredients: ['Thịt bò', 'Cần tây', 'Tỏi', 'Cá lóc', 'Cà chua', 'Dứa'] },
+  { name: 'Tôm rim mặn ngọt + Canh rau ngót thịt nạc', note: 'Vị ngọt mặn hài hòa hao cơm', ingredients: ['Tôm tươi', 'Hành tỏi', 'Rau ngót', 'Thịt nạc'] },
+  { name: 'Cá basa kho tộ + Canh cua mồng tơi mướp', note: 'Chuẩn bữa cơm quê nhà', ingredients: ['Cá basa', 'Cua', 'Rau mồng tơi', 'Mướp'] },
+  { name: 'Thịt kho tàu + Canh bắp cải cuộn thịt', note: 'Món ngon truyền thống', ingredients: ['Thịt ba chỉ', 'Trứng', 'Bắp cải', 'Thịt băm'] },
+  { name: 'Sườn non xào chua ngọt + Canh sườn hầm củ quả', note: 'Vị chua ngọt hấp dẫn', ingredients: ['Sườn heo', 'Cà chua', 'Ớt chuông', 'Cà rốt', 'Khoai tây'] },
+  { name: 'Mực xào dưa leo cà chua + Canh khổ qua nhồi thịt', note: 'Món biển giải nhiệt mát lành', ingredients: ['Mực', 'Dưa leo', 'Cà chua', 'Khổ qua', 'Thịt heo'] },
+  { name: 'Đậu phụ nhồi thịt sốt cà chua + Canh rau muống luộc', note: 'Dễ làm, thanh mát trưa hè', ingredients: ['Đậu phụ', 'Thịt băm', 'Cà chua', 'Rau muống', 'Chanh'] },
+  { name: 'Cá hồi áp chảo bơ tỏi + Salad rau củ mè rang', note: 'Omega-3 cao cấp ít tinh bột', ingredients: ['Cá hồi', 'Bơ', 'Tỏi', 'Xà lách', 'Cà chua bi'] },
+  { name: 'Gà hấp lá chanh + Canh măng chua sườn non', note: 'Ngọt thịt thơm lá chanh', ingredients: ['Gà ta', 'Lá chanh', 'Măng chua', 'Sườn non'] },
+  { name: 'Bò lúc lắc khoai tây + Canh rong biển đậu phụ', note: 'Món ngon hiện đại đậm vị', ingredients: ['Thịt bò', 'Khoai tây', 'Ớt chuông', 'Rong biển', 'Đậu hũ'] },
+  { name: 'Thịt kho tiêu dưa cải + Canh bí đỏ thịt băm', note: 'Đậm vị ấm nồng', ingredients: ['Thịt heo', 'Dưa cải chua', 'Bí đỏ', 'Thịt băm'] },
+];
+
+const DINNER_POOL = [
+  { name: 'Trứng chiên thịt băm cà chua + Canh rau dền nấu tôm', note: 'Bữa tối nhẹ bụng thanh mát', ingredients: ['Trứng gà', 'Thịt băm', 'Cà chua', 'Rau dền', 'Tôm'] },
+  { name: 'Cá điêu hồng chiên xù mắm tỏi + Rau cải luộc', note: 'Giòn rụm chấm mắm chua ngọt', ingredients: ['Cá điêu hồng', 'Tỏi ớt', 'Rau cải ngọt'] },
+  { name: 'Gỏi gà xé phay bắp cải + Canh gà lá giang', note: 'Eat clean nhẹ nhàng dễ ngủ', ingredients: ['Thịt gà', 'Bắp cải', 'Rau răm', 'Lá giang'] },
+  { name: 'Thịt bò xào bông cải + Canh mồng tơi mướp hương', note: 'Giàu chất xơ và khoáng chất', ingredients: ['Thịt bò', 'Bông cải xanh', 'Mồng tơi', 'Mướp'] },
+  { name: 'Đậu hũ sốt nấm thịt bằm + Canh rau củ', note: 'Thanh đạm, dễ tiêu buổi tối', ingredients: ['Đậu hũ', 'Nấm hương', 'Thịt băm', 'Cà rốt', 'Su su'] },
+  { name: 'Cá ngừ kho dứa (thơm) + Canh chua dọc mùng', note: 'Vị chua ngọt đậm đà', ingredients: ['Cá ngừ', 'Dứa', 'Dọc mùng', 'Cà chua', 'Me'] },
+  { name: 'Sườn rim mè mặn ngọt + Canh củ sen hầm sườn', note: 'Bổ dưỡng an thần', ingredients: ['Sườn heo', 'Mè trắng', 'Củ sen', 'Bắp ngọt'] },
+  { name: 'Mực hấp gừng sả + Canh cải thìa thịt viên', note: 'Giữ trọn độ ngọt tự nhiên', ingredients: ['Mực tươi', 'Gừng', 'Sả', 'Cải thìa', 'Giò sống'] },
+  { name: 'Cánh gà chiên nước mắm + Canh khoai mỡ tôm băm', note: 'Thơm lừng đậm đà màu sắc', ingredients: ['Cánh gà', 'Nước mắm', 'Tỏi', 'Khoai mỡ', 'Tôm'] },
+  { name: 'Lẩu nấm gà lá é sum họp', note: 'Ấm cúng cuối tuần', ingredients: ['Thịt gà', 'Nấm các loại', 'Lá é', 'Bún tươi'] },
+  { name: 'Bò cuộn nấm kim châm áp chảo + Canh cải cúc', note: 'Hương vị Nhật - Việt hài hòa', ingredients: ['Thịt bò ba chỉ', 'Nấm kim châm', 'Cải cúc'] },
+  { name: 'Salad cá ngừ sốt mè rang + Bánh mì bơ tỏi', note: 'Bữa tối nhẹ nhàng chuẩn dáng', ingredients: ['Cá ngừ ngâm dầu', 'Xà lách', 'Cà chua', 'Bánh mì'] },
+];
+
+/**
+ * Helper to shuffle and pick distinct items
+ */
+const shuffleArray = (arr) => {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
+/**
+ * Generate fully dynamic, randomized 7-day meal plan
+ */
+const generateDynamicMealPlan = (pantryItems = []) => {
+  const dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+  
+  // Shuffle pools randomly
+  const bPool = shuffleArray(BREAKFAST_POOL);
+  const lPool = shuffleArray(LUNCH_POOL);
+  const dPool = shuffleArray(DINNER_POOL);
+
+  const days = [];
+
+  for (let i = 0; i < 7; i++) {
+    const bDish = bPool[i % bPool.length];
+    const lDish = lPool[i % lPool.length];
+    const dDish = dPool[i % dPool.length];
+
+    days.push({
+      dayIndex: i,
+      dayName: dayNames[i],
+      meals: [
+        {
+          slot: 'breakfast',
+          customDishName: bDish.name,
+          note: bDish.note,
+          ingredients: bDish.ingredients,
+        },
+        {
+          slot: 'lunch',
+          customDishName: lDish.name,
+          note: lDish.note,
+          ingredients: lDish.ingredients,
+        },
+        {
+          slot: 'dinner',
+          customDishName: dDish.name,
+          note: dDish.note,
+          ingredients: dDish.ingredients,
+        },
+      ],
+    });
+  }
+
+  return days;
+};
+
+/**
  * AI Suggest 7-day Meal Plan based on available pantry items and healthy balance
  */
 const suggestWeeklyMealPlan = async ({ pantryItems = [], targetDays = 7, preferences = '' }) => {
@@ -243,15 +352,31 @@ const suggestWeeklyMealPlan = async ({ pantryItems = [], targetDays = 7, prefere
     ? pantryItems.map((p) => `${p.name} (SL: ${p.quantity}, vị trí: ${p.storageLocation})`).join(', ')
     : 'Chưa có thực phẩm nào trong tủ lạnh';
 
+  const randomThemes = [
+    'Phong vị ẩm thực gia đình 3 miền đậm đà, đổi vị mỗi ngày',
+    'Thanh đạm, Eat-Clean, nhiều rau xanh và củ quả tươi mát',
+    'Tiết kiệm tối đa nguyên liệu có sẵn, nấu nhanh gọn dưới 30 phút',
+    'Dinh dưỡng tăng cường Protein, ít dầu mỡ, chuẩn dáng',
+    'Các món mặn đưa cơm, canh ngọt mát lành đặc trưng Việt Nam',
+  ];
+  const chosenTheme = randomThemes[Math.floor(Math.random() * randomThemes.length)];
+  const randomSeed = Date.now();
+
   const prompt = `
 Bạn là chuyên gia dinh dưỡng và đầu bếp trưởng của ứng dụng "Vét Tủ".
-Hãy lên thực đơn ăn uống ngon miệng, thuần Việt, cân bằng dinh dưỡng cho 7 ngày (từ Thứ 2 đến Chủ Nhật).
+Hãy lên thực đơn ăn uống NGẪU NHIÊN, MỚI LẠ VÀ ĐỘC ĐÁO cho 7 ngày (từ Thứ 2 đến Chủ Nhật).
+Chủ đề tuần này: "${chosenTheme}" (Phiên bản gợi ý #${randomSeed}).
 Mỗi ngày gồm 3 bữa chính: Bữa sáng (breakfast), Bữa trưa (lunch), Bữa tối (dinner).
 
-Nguyên liệu người dùng ĐANG CÓ TRONG TỦ LẠNH (hãy ưu tiên sử dụng để tiết kiệm và tránh lãng phí):
+Nguyên liệu người dùng ĐANG CÓ TRONG TỦ LẠNH (ưu tiên tận dụng khéo léo):
 ${pantrySummary}
 
 ${preferences ? `Yêu cầu thêm từ người dùng: ${preferences}` : ''}
+
+YÊU CẦU ĐẶC BIỆT:
+- Tạo các món ăn phong phú, KHÔNG ĐƯỢC LẶP LẠI đơn điệu giữa các ngày.
+- Bữa sáng nhanh gọn hoặc các món bún/phở/bánh mì quen thuộc.
+- Bữa trưa và Bữa tối kết hợp chuẩn món mặn + món canh/rau (VD: "Gà xào sả ớt + Canh bí đao").
 
 Nhiệm vụ:
 Tạo kế hoạch 7 ngày (dayIndex từ 0 đến 6 tương ứng Thứ 2 đến Chủ Nhật).
@@ -263,108 +388,41 @@ Trả về DUY NHẤT một mảng JSON (Array) gồm 7 phần tử theo đúng 
     "meals": [
       {
         "slot": "breakfast",
-        "customDishName": "Bánh mì ốp la xúc xích",
-        "note": "Nhanh gọn 10 phút, giàu năng lượng",
-        "ingredients": ["Bánh mì", "Trứng gà", "Xúc xích", "Dưa leo"]
+        "customDishName": "Tên món sáng",
+        "note": "Ghi chú ngắn",
+        "ingredients": ["Nguyên liệu 1", "Nguyên liệu 2"]
       },
       {
         "slot": "lunch",
-        "customDishName": "Thịt heo kho tiêu + Canh cải thịt băm",
-        "note": "Cơm trưa đậm đà, dễ mang đi làm",
-        "ingredients": ["Thịt heo", "Thịt băm", "Rau cải", "Hành lá", "Hành tím"]
+        "customDishName": "Tên món mặn + Tên món canh",
+        "note": "Ghi chú ngắn",
+        "ingredients": ["Nguyên liệu 1", "Nguyên liệu 2"]
       },
       {
         "slot": "dinner",
-        "customDishName": "Cá kho tộ + Canh rau muống luộc",
-        "note": "Bữa tối nhẹ bụng thanh mát",
-        "ingredients": ["Cá", "Rau muống", "Tỏi", "Chanh"]
+        "customDishName": "Tên món tối + Canh/rau",
+        "note": "Ghi chú ngắn",
+        "ingredients": ["Nguyên liệu 1", "Nguyên liệu 2"]
       }
     ]
   }
 ]
-Đảm bảo các món ăn phong phú, không bị lặp lại đơn điệu giữa các ngày.
 Chỉ trả về JSON thuần túy, không có giải thích hay markdown code fence.
 `;
 
-  const sampleDays = [
-    {
-      dayIndex: 0,
-      dayName: 'Thứ 2',
-      meals: [
-        { slot: 'breakfast', customDishName: 'Bánh mì ốp la xúc xích', note: 'Bữa sáng nhanh gọn 10p', ingredients: ['Bánh mì', 'Trứng gà', 'Xúc xích'] },
-        { slot: 'lunch', customDishName: 'Thịt heo rang cháy cạnh + Canh rau cải', note: 'Cơm trưa đậm đà', ingredients: ['Thịt heo', 'Rau cải', 'Hành lá'] },
-        { slot: 'dinner', customDishName: 'Trứng chiên cà chua + Canh rau muống', note: 'Thanh đạm nhẹ bụng', ingredients: ['Trứng gà', 'Cà chua', 'Rau muống'] },
-      ],
-    },
-    {
-      dayIndex: 1,
-      dayName: 'Thứ 3',
-      meals: [
-        { slot: 'breakfast', customDishName: 'Mì tôm trứng xúc xích', note: 'Đậm đà 5 phút', ingredients: ['Mì tôm', 'Trứng gà', 'Xúc xích'] },
-        { slot: 'lunch', customDishName: 'Gà xào sả ớt + Canh bí đao', note: 'Thơm nức mũi', ingredients: ['Thịt gà', 'Sả', 'Ớt', 'Bí đao'] },
-        { slot: 'dinner', customDishName: 'Đậu phụ sốt cà chua', note: 'Dễ tiêu hóa', ingredients: ['Đậu phụ', 'Cà chua', 'Hành lá'] },
-      ],
-    },
-    {
-      dayIndex: 2,
-      dayName: 'Thứ 4',
-      meals: [
-        { slot: 'breakfast', customDishName: 'Bánh cuốn chả lụa', note: 'Thưởng thức sáng', ingredients: ['Bánh cuốn', 'Chả lụa'] },
-        { slot: 'lunch', customDishName: 'Bò xào cần tỏi + Canh chua cá', note: 'Bổ sung chất sắt', ingredients: ['Thịt bò', 'Cần tây', 'Tỏi', 'Cá'] },
-        { slot: 'dinner', customDishName: 'Canh sườn hầm rau củ', note: 'Ngọt nước tự nhiên', ingredients: ['Sườn heo', 'Cà rốt', 'Khoai tây'] },
-      ],
-    },
-    {
-      dayIndex: 3,
-      dayName: 'Thứ 5',
-      meals: [
-        { slot: 'breakfast', customDishName: 'Cháo sườn trứng bắc thảo', note: 'Ấm bụng sáng', ingredients: ['Gạo', 'Sườn heo', 'Trứng'] },
-        { slot: 'lunch', customDishName: 'Mực xào chua ngọt + Canh mồng tơi', note: 'Hương vị biển', ingredients: ['Mực', 'Dứa', 'Cà chua', 'Rau mồng tơi'] },
-        { slot: 'dinner', customDishName: 'Thịt kho tàu + Dưa cải chua', note: 'Chuẩn vị truyền thống', ingredients: ['Thịt ba chỉ', 'Trứng', 'Dưa cải'] },
-      ],
-    },
-    {
-      dayIndex: 4,
-      dayName: 'Thứ 6',
-      meals: [
-        { slot: 'breakfast', customDishName: 'Bún chả giò / Bún thịt nướng', note: 'Đổi vị cuối tuần', ingredients: ['Bún tươi', 'Chả giò', 'Rau sống'] },
-        { slot: 'lunch', customDishName: 'Tôm rim mặn ngọt + Canh bắp cải', note: 'Món ngon hao cơm', ingredients: ['Tôm tươi', 'Hành tỏi', 'Bắp cải'] },
-        { slot: 'dinner', customDishName: 'Gỏi gà xé phay bắp cải', note: 'Eat clean nhẹ nhàng', ingredients: ['Thịt gà', 'Bắp cải', 'Rau răm', 'Đậu phộng'] },
-      ],
-    },
-    {
-      dayIndex: 5,
-      dayName: 'Thứ 7',
-      meals: [
-        { slot: 'breakfast', customDishName: 'Phở bò tái lăn', note: 'Thưởng thức cuối tuần', ingredients: ['Bánh phở', 'Thịt bò', 'Hành lá', 'Gừng'] },
-        { slot: 'lunch', customDishName: 'Cá hồi áp chảo sốt bơ chanh', note: 'Dinh dưỡng cao cấp', ingredients: ['Cá hồi', 'Bơ', 'Chanh', 'Măng tây'] },
-        { slot: 'dinner', customDishName: 'Lẩu nấm gà lá é gia đình', note: 'Sum họp ấm cúng', ingredients: ['Gà ta', 'Nấm các loại', 'Lá é', 'Bún'] },
-      ],
-    },
-    {
-      dayIndex: 6,
-      dayName: 'Chủ Nhật',
-      meals: [
-        { slot: 'breakfast', customDishName: 'Pancake chuối yến mạch', note: 'Healthy thư thái', ingredients: ['Yến mạch', 'Chuối', 'Trứng', 'Mật ong'] },
-        { slot: 'lunch', customDishName: 'Bún bò Huế gia truyền', note: 'Nấu đãi cả nhà', ingredients: ['Bắp bò', 'Giò heo', 'Bún sợi to', 'Sả ớt'] },
-        { slot: 'dinner', customDishName: 'Salad cá ngừ sốt mè rang', note: 'Nhẹ bụng chuẩn bị tuần mới', ingredients: ['Cá ngừ hộp', 'Xà lách', 'Cà chua bi', 'Sốt mè'] },
-      ],
-    },
-  ];
-
   if (!process.env.GEMINI_API_KEY) {
-    return sampleDays;
+    return generateDynamicMealPlan(pantryItems);
   }
 
   try {
-    const aiResult = await callGeminiFlash({ prompt });
-    if (Array.isArray(aiResult) && aiResult.length > 0) {
+    const aiResult = await callGeminiFlash({ prompt, temperature: 0.9 });
+    if (Array.isArray(aiResult) && aiResult.length === 7) {
       return aiResult;
     }
-    return sampleDays;
+    return generateDynamicMealPlan(pantryItems);
   } catch (err) {
-    console.log('[AI Meal Planner] Gemini temporarily unavailable or 503, fallback to smart rule engine:', err.message);
-    return sampleDays;
+    console.log('[AI Meal Planner] Gemini temporarily busy, generated via dynamic culinary engine:', err.message);
+    return generateDynamicMealPlan(pantryItems);
   }
 };
 
