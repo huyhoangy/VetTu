@@ -19,17 +19,21 @@ exports.getOrCreateConversation = async (req, res) => {
     }
 
     // 1. Resolve current user ID
-    let currentUserId = req.user?._id || userId;
+    let currentUserId = req.user?._id || req.user?.id || userId;
     if (!currentUserId) {
-      let firstUser = await User.findOne();
-      if (!firstUser) {
-        firstUser = await User.create({
-          name: 'Tôi (Người nhận)',
-          email: 'receiver@vettu.app',
-          avatar: 'https://cdn-icons-png.flaticon.com/512/847/847969.png',
-        });
-      }
-      currentUserId = firstUser._id;
+      return res.status(401).json({
+        success: false,
+        message: 'Vui lòng đăng nhập để gửi tin nhắn',
+      });
+    }
+
+    const senderUser = await User.findById(currentUserId);
+    if (!senderUser || !senderUser.isVerified) {
+      return res.status(403).json({
+        success: false,
+        requireVerification: true,
+        message: 'Bạn cần xác thực tài khoản (SĐT chính chủ) trước khi nhắn tin trao đổi nhận thực phẩm để đảm bảo an toàn và phòng chống bùng hẹn.',
+      });
     }
 
     // 2. Resolve donor user ID
@@ -366,11 +370,22 @@ exports.sendMessage = async (req, res) => {
   try {
     const { id } = req.params;
     const { text, senderId } = req.body;
-    let currentUserId = req.user?._id || senderId;
+    let currentUserId = req.user?._id || req.user?.id || senderId;
 
     if (!currentUserId) {
-      const anyUser = await User.findOne();
-      currentUserId = anyUser?._id;
+      return res.status(401).json({
+        success: false,
+        message: 'Vui lòng đăng nhập để gửi tin nhắn',
+      });
+    }
+
+    const senderUser = await User.findById(currentUserId);
+    if (!senderUser || !senderUser.isVerified) {
+      return res.status(403).json({
+        success: false,
+        requireVerification: true,
+        message: 'Bạn cần xác thực tài khoản (SĐT chính chủ) để gửi tin nhắn.',
+      });
     }
 
     if (!text || !text.trim()) {

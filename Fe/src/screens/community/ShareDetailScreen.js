@@ -18,10 +18,11 @@ import chatApi from '../../api/chatApi';
 import { useAuth } from '../../context/AuthContext';
 import StatusUpdateModal from '../../components/common/StatusUpdateModal';
 import ReviewRatingModal from '../../components/community/ReviewRatingModal';
+import PhoneVerificationModal from '../../components/profile/PhoneVerificationModal';
 
 const ShareDetailScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
   const { shareId } = route.params;
 
   const [share, setShare] = useState(null);
@@ -30,6 +31,7 @@ const ShareDetailScreen = ({ navigation, route }) => {
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -79,6 +81,21 @@ const ShareDetailScreen = ({ navigation, route }) => {
   const handleContactDonor = async () => {
     if (isMyPost) {
       Alert.alert('Thông báo', 'Bạn là người đăng chia sẻ món này nên không thể tự nhắn tin cho chính mình!');
+      return;
+    }
+
+    if (!user?.isVerified) {
+      Alert.alert(
+        '🛡️ Cần xác thực tài khoản',
+        'Để đảm bảo an toàn và phòng chống bùng hẹn, bạn cần xác thực số điện thoại chính chủ trước khi nhắn tin xin nhận thực phẩm từ người tặng.',
+        [
+          { text: 'Để sau', style: 'cancel' },
+          {
+            text: 'Xác thực ngay',
+            onPress: () => setVerificationModalVisible(true),
+          },
+        ]
+      );
       return;
     }
 
@@ -425,6 +442,17 @@ const ShareDetailScreen = ({ navigation, route }) => {
               },
             }));
           }
+        }}
+      />
+
+      {/* Phone Verification Modal */}
+      <PhoneVerificationModal
+        visible={verificationModalVisible}
+        onClose={() => setVerificationModalVisible(false)}
+        currentUser={user}
+        onSuccess={(updatedUser) => {
+          updateUserProfile(updatedUser);
+          setVerificationModalVisible(false);
         }}
       />
     </View>

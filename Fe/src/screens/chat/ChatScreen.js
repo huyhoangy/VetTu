@@ -18,6 +18,7 @@ import { Colors } from '../../constants/colors';
 import { useAuth } from '../../context/AuthContext';
 import chatApi from '../../api/chatApi';
 import notificationApi from '../../api/notificationApi';
+import PhoneVerificationModal from '../../components/profile/PhoneVerificationModal';
 
 const QUICK_ACTIONS = [
   '⏰ Hẹn bạn 18h tối nay nhé',
@@ -28,7 +29,7 @@ const QUICK_ACTIONS = [
 
 const ChatScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
   const { conversationId, shareItem, donorUser } = route.params;
 
   const [messages, setMessages] = useState([]);
@@ -36,6 +37,7 @@ const ChatScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [conversationStatus, setConversationStatus] = useState(shareItem?.status || 'AVAILABLE');
+  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
   const scrollViewRef = useRef();
 
   const currentUserId = user?._id || user?.id;
@@ -71,6 +73,21 @@ const ChatScreen = ({ navigation, route }) => {
   }, [conversationId, currentUserId]);
 
   const handleSend = async (customText) => {
+    if (!user?.isVerified) {
+      Alert.alert(
+        '🛡️ Cần xác thực tài khoản',
+        'Để đảm bảo an toàn và phòng chống bùng hẹn, bạn cần xác thực số điện thoại chính chủ trước khi gửi tin nhắn.',
+        [
+          { text: 'Để sau', style: 'cancel' },
+          {
+            text: 'Xác thực ngay',
+            onPress: () => setVerificationModalVisible(true),
+          },
+        ]
+      );
+      return;
+    }
+
     const textToSend = (customText || inputText).trim();
     if (!textToSend || sending) return;
 
@@ -355,6 +372,17 @@ const ChatScreen = ({ navigation, route }) => {
           )}
         </TouchableOpacity>
       </View>
+
+      {/* Phone Verification Modal */}
+      <PhoneVerificationModal
+        visible={verificationModalVisible}
+        onClose={() => setVerificationModalVisible(false)}
+        currentUser={user}
+        onSuccess={(updatedUser) => {
+          updateUserProfile(updatedUser);
+          setVerificationModalVisible(false);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 };
