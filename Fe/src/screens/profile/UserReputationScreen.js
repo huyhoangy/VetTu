@@ -114,10 +114,14 @@ const UserReputationScreen = ({ route, navigation }) => {
                 <View style={styles.userInfo}>
                   <View style={styles.nameRow}>
                     <Text style={styles.userName}>{user?.name || 'Thành viên Vét Tủ'}</Text>
-                    <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                    {user?.isVerified ? (
+                      <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                    ) : null}
                   </View>
                   <Text style={styles.userRole}>
-                    {isMe ? 'Hồ sơ của bạn' : 'Thành viên cộng đồng'}
+                    {user?.isVerified
+                      ? (isMe ? 'Tài khoản đã xác thực' : 'Thành viên đã xác thực')
+                      : (isMe ? 'Hồ sơ của bạn' : 'Thành viên cộng đồng')}
                   </Text>
                 </View>
               </View>

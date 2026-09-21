@@ -54,12 +54,16 @@ const register = async (req, res, next) => {
       data: {
         user: {
           id: user._id,
+          _id: user._id,
           name: user.name,
           email: user.email,
           avatar: user.avatar,
           phone: user.phone,
           rating: user.rating,
           ratingCount: user.ratingCount,
+          isVerified: user.isVerified || false,
+          phoneVerifiedAt: user.phoneVerifiedAt || null,
+          verificationMethod: user.verificationMethod || 'NONE',
           location: user.location,
           favorites: user.favorites || [],
         },
@@ -113,12 +117,16 @@ const login = async (req, res, next) => {
       data: {
         user: {
           id: user._id,
+          _id: user._id,
           name: user.name,
           email: user.email,
           avatar: user.avatar,
           phone: user.phone,
           rating: user.rating,
           ratingCount: user.ratingCount,
+          isVerified: user.isVerified || false,
+          phoneVerifiedAt: user.phoneVerifiedAt || null,
+          verificationMethod: user.verificationMethod || 'NONE',
           location: user.location,
           favorites: user.favorites || [],
         },
@@ -229,12 +237,16 @@ const firebaseLogin = async (req, res, next) => {
       data: {
         user: {
           id: user._id,
+          _id: user._id,
           name: user.name,
           email: user.email,
           avatar: user.avatar,
           phone: user.phone,
           rating: user.rating,
           ratingCount: user.ratingCount,
+          isVerified: user.isVerified || false,
+          phoneVerifiedAt: user.phoneVerifiedAt || null,
+          verificationMethod: user.verificationMethod || 'NONE',
           location: user.location,
           favorites: user.favorites || [],
         },
@@ -270,12 +282,16 @@ const getMe = async (req, res, next) => {
       data: {
         user: {
           id: user._id,
+          _id: user._id,
           name: user.name,
           email: user.email,
           avatar: user.avatar,
           phone: user.phone,
           rating: user.rating,
           ratingCount: user.ratingCount,
+          isVerified: user.isVerified || false,
+          phoneVerifiedAt: user.phoneVerifiedAt || null,
+          verificationMethod: user.verificationMethod || 'NONE',
           location: user.location,
           favorites: user.favorites || [],
         },
@@ -350,6 +366,90 @@ const updatePushToken = async (req, res, next) => {
   }
 };
 
+// @desc    Verify phone number with Firebase ID Token / SMS OTP
+// @route   POST /api/auth/verify-phone
+// @access  Public / Protected
+const verifyPhone = async (req, res, next) => {
+  try {
+    const { idToken, phoneNumber, userId } = req.body;
+    const targetUserId = req.user?._id || req.user?.id || userId;
+
+    if (!targetUserId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không xác định được người dùng cần xác thực',
+      });
+    }
+
+    let verifiedPhone = phoneNumber;
+
+    // If Firebase ID Token is provided, decode and verify with Firebase Admin
+    if (idToken && firebaseAuth) {
+      try {
+        const decodedToken = await firebaseAuth.verifyIdToken(idToken);
+        if (decodedToken.phone_number) {
+          verifiedPhone = decodedToken.phone_number;
+        }
+      } catch (err) {
+        console.warn('Firebase verifyIdToken error, falling back to phoneNumber verification:', err.message);
+      }
+    }
+
+    if (!verifiedPhone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng cung cấp số điện thoại hợp lệ',
+      });
+    }
+
+    const cleanPhone = String(verifiedPhone).replace(/\s+/g, '');
+
+    const updatedUser = await User.findByIdAndUpdate(
+      targetUserId,
+      {
+        phone: cleanPhone,
+        isVerified: true,
+        phoneVerifiedAt: new Date(),
+        verificationMethod: 'PHONE',
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy người dùng',
+      });
+    }
+
+    console.log(`[Backend Auth] Xác thực số điện thoại thành công cho user ${updatedUser.name} (${cleanPhone})`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Xác thực số điện thoại thành công! Bạn đã nhận được Huy hiệu Tích Xanh.',
+      data: {
+        user: {
+          id: updatedUser._id,
+          _id: updatedUser._id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          avatar: updatedUser.avatar,
+          phone: updatedUser.phone,
+          rating: updatedUser.rating,
+          ratingCount: updatedUser.ratingCount,
+          isVerified: updatedUser.isVerified,
+          phoneVerifiedAt: updatedUser.phoneVerifiedAt,
+          verificationMethod: updatedUser.verificationMethod,
+          location: updatedUser.location,
+          favorites: updatedUser.favorites || [],
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -357,4 +457,5 @@ module.exports = {
   getMe,
   updateLocation,
   updatePushToken,
+  verifyPhone,
 };

@@ -44,6 +44,19 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    phoneVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+    verificationMethod: {
+      type: String,
+      enum: ['PHONE', 'EMAIL', 'GOOGLE', 'NONE'],
+      default: 'NONE',
+    },
     favorites: [
       {
         type: mongoose.Schema.Types.ObjectId,

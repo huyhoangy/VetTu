@@ -84,6 +84,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update user profile locally and in AsyncStorage
+  const updateUserProfile = async (updatedData) => {
+    try {
+      setUser((prev) => {
+        const merged = { ...prev, ...updatedData };
+        AsyncStorage.setItem('user_profile', JSON.stringify(merged)).catch(() => {});
+        return merged;
+      });
+    } catch (error) {
+      console.error('Update profile error:', error);
+    }
+  };
+
   // Logout handler
   const logout = async () => {
     try {
@@ -107,6 +120,7 @@ export const AuthProvider = ({ children }) => {
         loginWithFirebase,
         register,
         logout,
+        updateUserProfile,
       }}
     >
       {children}

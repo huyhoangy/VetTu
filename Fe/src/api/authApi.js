@@ -30,6 +30,11 @@ export const authApi = {
   updatePushToken: (pushToken) => {
     return axiosClient.post('/auth/push-token', { pushToken });
   },
+
+  // Verify Phone Number with Firebase
+  verifyPhone: (data) => {
+    return axiosClient.post('/auth/verify-phone', data);
+  },
 };
 
 export default authApi;

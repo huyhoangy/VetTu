@@ -18,16 +18,18 @@ import cookingHistoryApi from '../../api/cookingHistoryApi';
 import shareApi from '../../api/shareApi';
 import pantryApi from '../../api/pantryApi';
 import reviewApi from '../../api/reviewApi';
+import PhoneVerificationModal from '../../components/profile/PhoneVerificationModal';
 
 const ProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserProfile } = useAuth();
   const [favoritesCount, setFavoritesCount] = useState(user?.favorites?.length || 0);
   const [cookedCount, setCookedCount] = useState(0);
   const [mySharesCount, setMySharesCount] = useState(0);
   const [pantryStats, setPantryStats] = useState({ total: 0, expiringSoon: 0 });
   const [rating, setRating] = useState(user?.rating || 5.0);
   const [ratingCount, setRatingCount] = useState(user?.ratingCount || 0);
+  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
 
   const currentUserId = user?._id || user?.id;
 
@@ -137,10 +139,22 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.userEmail}>{user?.email || 'user@vettu.app'}</Text>
 
           <View style={styles.badgeRow}>
-            <View style={styles.trustBadge}>
-              <Ionicons name="shield-checkmark" size={14} color="#10B981" />
-              <Text style={styles.trustBadgeText}>Đã xác thực</Text>
-            </View>
+            {user?.isVerified ? (
+              <View style={styles.trustBadge}>
+                <Ionicons name="shield-checkmark" size={14} color="#10B981" />
+                <Text style={styles.trustBadgeText}>Đã xác thực</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.unverifiedBadge}
+                onPress={() => setVerificationModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="shield-outline" size={14} color="#D97706" />
+                <Text style={styles.unverifiedBadgeText}>Chưa xác thực</Text>
+                <Ionicons name="chevron-forward" size={12} color="#D97706" />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={styles.ratingBadge}
               onPress={() => navigation.navigate('UserReputation', { userId: currentUserId })}
@@ -240,6 +254,16 @@ const ProfileScreen = ({ navigation }) => {
 
         <Text style={styles.versionText}>Phiên bản 1.0.0 • Vét Tủ - ChefMatch</Text>
       </ScrollView>
+
+      {/* Phone Verification Modal */}
+      <PhoneVerificationModal
+        visible={verificationModalVisible}
+        onClose={() => setVerificationModalVisible(false)}
+        currentUser={user}
+        onSuccess={(updatedUser) => {
+          updateUserProfile(updatedUser);
+        }}
+      />
     </View>
   );
 };
@@ -319,6 +343,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#065F46',
+  },
+  unverifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  unverifiedBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B45309',
   },
   ratingBadge: {
     flexDirection: 'row',
