@@ -305,6 +305,23 @@ exports.createShare = async (req, res) => {
       expiresHours = 48,
     } = req.body;
 
+    const creatorId = req.user?._id || req.user?.id || req.body.userId;
+    if (!creatorId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Vui lòng đăng nhập để đăng bài chia sẻ',
+      });
+    }
+
+    const creatorUser = await User.findById(creatorId);
+    if (!creatorUser || !creatorUser.isVerified) {
+      return res.status(403).json({
+        success: false,
+        requireVerification: true,
+        message: 'Bạn cần xác thực tài khoản (SĐT chính chủ) trước khi đăng bài chia sẻ thực phẩm để bảo đảm uy tín trong cộng đồng.',
+      });
+    }
+
     if (!title || !quantity) {
       return res.status(400).json({
         success: false,

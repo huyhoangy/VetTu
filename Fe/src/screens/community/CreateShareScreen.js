@@ -18,6 +18,7 @@ import { Colors } from '../../constants/colors';
 import shareApi from '../../api/shareApi';
 import { useAuth } from '../../context/AuthContext';
 import { uploadImageToCloudinary } from '../../api/cloudinaryApi';
+import PhoneVerificationModal from '../../components/profile/PhoneVerificationModal';
 
 const CATEGORIES = [
   { id: 'VEGGIES', title: '🥦 Rau củ quả' },
@@ -30,7 +31,7 @@ const CATEGORIES = [
 
 const CreateShareScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
 
   const [title, setTitle] = useState(route?.params?.initialTitle || '');
   const [description, setDescription] = useState(route?.params?.initialDescription || '');
@@ -45,6 +46,7 @@ const CreateShareScreen = ({ navigation, route }) => {
   const [selectedImageBase64, setSelectedImageBase64] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploadingText, setUploadingText] = useState('Đăng bài chia sẻ');
+  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
 
   // Auto-detect current address on mount
   React.useEffect(() => {
@@ -101,6 +103,21 @@ const CreateShareScreen = ({ navigation, route }) => {
   };
 
   const handleSubmit = async () => {
+    if (!user?.isVerified) {
+      Alert.alert(
+        '🛡️ Cần xác thực tài khoản',
+        'Để đảm bảo uy tín và phòng chống bùng hẹn, bạn cần xác thực số điện thoại chính chủ trước khi đăng bài chia sẻ thực phẩm.',
+        [
+          { text: 'Huỷ', style: 'cancel' },
+          {
+            text: 'Xác thực ngay',
+            onPress: () => setVerificationModalVisible(true),
+          },
+        ]
+      );
+      return;
+    }
+
     if (!title.trim()) {
       Alert.alert('Thiếu thông tin', 'Vui lòng nhập tên thực phẩm hoặc món ăn');
       return;
@@ -337,6 +354,17 @@ const CreateShareScreen = ({ navigation, route }) => {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Phone Verification Modal */}
+      <PhoneVerificationModal
+        visible={verificationModalVisible}
+        onClose={() => setVerificationModalVisible(false)}
+        currentUser={user}
+        onSuccess={(updatedUser) => {
+          updateUserProfile(updatedUser);
+          setVerificationModalVisible(false);
+        }}
+      />
     </View>
   );
 };

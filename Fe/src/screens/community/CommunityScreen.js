@@ -22,6 +22,7 @@ import { Colors } from '../../constants/colors';
 import shareApi from '../../api/shareApi';
 import notificationApi from '../../api/notificationApi';
 import { useAuth } from '../../context/AuthContext';
+import PhoneVerificationModal from '../../components/profile/PhoneVerificationModal';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -44,11 +45,12 @@ const TYPE_FILTERS = [
 
 const CommunityScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [verificationModalVisible, setVerificationModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(route?.params?.initialCategory || 'ALL');
   const [selectedType, setSelectedType] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState(route?.params?.initialSearch || '');
@@ -170,6 +172,24 @@ const CommunityScreen = ({ navigation, route }) => {
     setRefreshing(true);
     fetchShares(true);
     fetchUnreadCount();
+  };
+
+  const handleCreateSharePress = () => {
+    if (!user?.isVerified) {
+      Alert.alert(
+        '🛡️ Cần xác thực tài khoản',
+        'Để đảm bảo uy tín và phòng chống bùng hẹn trong cộng đồng, bạn cần xác thực số điện thoại chính chủ trước khi đăng bài chia sẻ thực phẩm.',
+        [
+          { text: 'Để sau', style: 'cancel' },
+          {
+            text: 'Xác thực ngay',
+            onPress: () => setVerificationModalVisible(true),
+          },
+        ]
+      );
+      return;
+    }
+    navigation.navigate('CreateShare');
   };
 
   return (
@@ -303,7 +323,7 @@ const CommunityScreen = ({ navigation, route }) => {
               </Text>
               <TouchableOpacity
                 style={styles.emptyAddButton}
-                onPress={() => navigation.navigate('CreateShare')}
+                onPress={handleCreateSharePress}
                 activeOpacity={0.8}
               >
                 <Ionicons name="add" size={20} color="#FFFFFF" />
@@ -420,12 +440,24 @@ const CommunityScreen = ({ navigation, route }) => {
           styles.fabButton,
           { bottom: Math.max(insets.bottom, 16) + 16 },
         ]}
-        onPress={() => navigation.navigate('CreateShare')}
+        onPress={handleCreateSharePress}
         activeOpacity={0.85}
       >
         <Ionicons name="add" size={24} color="#FFFFFF" />
         <Text style={styles.fabText}>Chia sẻ món</Text>
       </TouchableOpacity>
+
+      {/* Phone Verification Modal */}
+      <PhoneVerificationModal
+        visible={verificationModalVisible}
+        onClose={() => setVerificationModalVisible(false)}
+        currentUser={user}
+        onSuccess={(updatedUser) => {
+          updateUserProfile(updatedUser);
+          setVerificationModalVisible(false);
+          navigation.navigate('CreateShare');
+        }}
+      />
     </View>
   );
 };
