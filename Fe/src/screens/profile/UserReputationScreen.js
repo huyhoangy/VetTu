@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/colors';
 import reviewApi from '../../api/reviewApi';
-import { useAuthStore } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 const formatDateRelative = (dateString) => {
   if (!dateString) return '';
@@ -30,10 +30,11 @@ const formatDateRelative = (dateString) => {
 
 const UserReputationScreen = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
-  const { user: authUser } = useAuthStore();
+  const { user: authUser } = useAuth();
   
-  const targetUserId = route?.params?.userId || authUser?._id;
-  const isMe = targetUserId === authUser?._id;
+  const currentUserId = authUser?._id || authUser?.id;
+  const targetUserId = route?.params?.userId || currentUserId;
+  const isMe = targetUserId === currentUserId;
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
