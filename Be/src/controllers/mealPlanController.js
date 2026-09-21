@@ -122,17 +122,32 @@ const updateMealSlot = async (req, res, next) => {
     const existingMealIndex = dayObj.meals.findIndex((m) => m.slot === slot);
 
     let recipeData = null;
+    let finalRecipeId = recipeId || null;
     let finalDishImage = dishImage || '';
     if (recipeId) {
       recipeData = await Recipe.findById(recipeId);
       if (recipeData && !finalDishImage) {
         finalDishImage = recipeData.imageUrl;
       }
+    } else if (customDishName) {
+      // Try to find matching recipe
+      const allDb = await Recipe.find({}).select('_id title imageUrl');
+      const matched = allDb.find((r) =>
+        r.title && (customDishName.toLowerCase().includes(r.title.toLowerCase()) || r.title.toLowerCase().includes(customDishName.toLowerCase()))
+      );
+      if (matched) {
+        finalRecipeId = matched._id;
+        if (!finalDishImage) finalDishImage = matched.imageUrl;
+      }
+    }
+
+    if (!finalDishImage && customDishName) {
+      finalDishImage = aiService.getRelevantDishImage(customDishName);
     }
 
     const mealData = {
       slot,
-      recipe: recipeId || null,
+      recipe: finalRecipeId,
       customDishName: customDishName || (recipeData ? recipeData.title : ''),
       dishImage: finalDishImage,
       note: note || '',
@@ -392,17 +407,42 @@ const aiSuggestWeeklyPlan = async (req, res, next) => {
 
       if (aiDayObj && Array.isArray(aiDayObj.meals)) {
         for (const m of aiDayObj.meals) {
+          const dishTitle = m.customDishName || 'Món ngon mỗi ngày';
           // Attempt fuzzy match with existing DB recipe
-          const matchedRecipe = allRecipes.find((r) =>
-            m.customDishName && r.title.toLowerCase().includes(m.customDishName.toLowerCase()) ||
-            (m.customDishName && m.customDishName.toLowerCase().includes(r.title.toLowerCase()))
+          let matchedRecipe = allRecipes.find((r) =>
+            r.title && (
+              r.title.toLowerCase() === dishTitle.toLowerCase() ||
+              dishTitle.toLowerCase().includes(r.title.toLowerCase()) ||
+              r.title.toLowerCase().includes(dishTitle.toLowerCase())
+            )
           );
+
+          // If no match, check composite parts (e.g. "Gà xào sả ớt + Canh bí đao")
+          if (!matchedRecipe) {
+            const parts = dishTitle.split(/[+/&,]| và | hoặc /i).map((p) => p.trim()).filter(Boolean);
+            if (parts.length > 1) {
+              for (const part of parts) {
+                const subMatch = allRecipes.find((r) =>
+                  r.title && (
+                    r.title.toLowerCase().includes(part.toLowerCase()) ||
+                    part.toLowerCase().includes(r.title.toLowerCase())
+                  )
+                );
+                if (subMatch) {
+                  matchedRecipe = subMatch;
+                  break;
+                }
+              }
+            }
+          }
+
+          const finalImage = matchedRecipe ? matchedRecipe.imageUrl : aiService.getRelevantDishImage(dishTitle);
 
           dayMeals.push({
             slot: m.slot || 'lunch',
             recipe: matchedRecipe ? matchedRecipe._id : null,
-            customDishName: m.customDishName || 'Món ngon mỗi ngày',
-            dishImage: matchedRecipe ? matchedRecipe.imageUrl : '',
+            customDishName: dishTitle,
+            dishImage: finalImage,
             note: m.note || '',
             completed: false,
           });

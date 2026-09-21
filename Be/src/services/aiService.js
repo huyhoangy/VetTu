@@ -419,10 +419,141 @@ Chỉ trả về JSON thuần túy, không có giải thích hay markdown code f
     if (Array.isArray(aiResult) && aiResult.length === 7) {
       return aiResult;
     }
-    return generateDynamicMealPlan(pantryItems);
   } catch (err) {
     console.log('[AI Meal Planner] Gemini temporarily busy, generated via dynamic culinary engine:', err.message);
     return generateDynamicMealPlan(pantryItems);
+  }
+};
+/**
+ * High-quality food image matching based on Vietnamese culinary keywords
+ */
+const getRelevantDishImage = (title = '') => {
+  const lower = title.toLowerCase();
+  if (lower.includes('bò') || lower.includes('beef')) {
+    return 'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=800';
+  }
+  if (lower.includes('gà') || lower.includes('chicken')) {
+    return 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?q=80&w=800';
+  }
+  if (lower.includes('cá') || lower.includes('hải sản') || lower.includes('mực') || lower.includes('tôm') || lower.includes('fish')) {
+    return 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=800';
+  }
+  if (lower.includes('thịt') || lower.includes('heo') || lower.includes('sườn') || lower.includes('pork')) {
+    return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=800';
+  }
+  if (lower.includes('canh') || lower.includes('soup') || lower.includes('lẩu')) {
+    return 'https://images.unsplash.com/photo-1547592166-23ac45744acd?q=80&w=800';
+  }
+  if (lower.includes('bún') || lower.includes('phở') || lower.includes('mì') || lower.includes('hủ tiếu') || lower.includes('noodle')) {
+    return 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?q=80&w=800';
+  }
+  if (lower.includes('bánh mì') || lower.includes('bread') || lower.includes('sandwich')) {
+    return 'https://images.unsplash.com/photo-1509722747041-616f39b57569?q=80&w=800';
+  }
+  if (lower.includes('trứng') || lower.includes('egg') || lower.includes('ốp la')) {
+    return 'https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=800';
+  }
+  if (lower.includes('đậu') || lower.includes('chay') || lower.includes('rau') || lower.includes('salad')) {
+    return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800';
+  }
+  if (lower.includes('cơm') || lower.includes('xôi') || lower.includes('rice')) {
+    return 'https://images.unsplash.com/photo-1596560548464-f010549b84d7?q=80&w=800';
+  }
+  return 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=800';
+};
+
+/**
+ * Generate full recipe details on-the-fly for any dish title
+ */
+const generateRecipeDetailsForDish = async (dishTitle) => {
+  const cleanTitle = (dishTitle || 'Món ngon gia đình').trim();
+  const imageUrl = getRelevantDishImage(cleanTitle);
+
+  const fallbackRecipe = {
+    title: cleanTitle,
+    description: `Công thức chế biến món "${cleanTitle}" thơm ngon, chuẩn vị gia đình Việt với các bước nấu nhanh gọn, dễ làm.`,
+    imageUrl,
+    prepTimeMinutes: 10,
+    cookTimeMinutes: 15,
+    servings: 2,
+    difficulty: 'EASY',
+    appliance: 'STOVE',
+    ingredients: [
+      { name: cleanTitle, normalized_name: cleanTitle.toLowerCase(), quantity: '1', unit: 'phần', isOptional: false },
+      { name: 'Hành tím & tỏi', normalized_name: 'hanh tim', quantity: '2', unit: 'củ', isOptional: false },
+      { name: 'Hành lá, ngò rí', normalized_name: 'hanh la', quantity: '2', unit: 'nhánh', isOptional: true },
+      { name: 'Gia vị cơ bản (mắm, muối, tiêu, hạt nêm)', normalized_name: 'gia vi', quantity: '1', unit: 'bộ', isOptional: false },
+    ],
+    ingredientKeywords: [cleanTitle.toLowerCase(), 'hành tím', 'tỏi', 'hành lá', 'gia vị'],
+    instructions: [
+      { stepNumber: 1, instruction: `Sơ chế sạch các nguyên liệu tươi cho món "${cleanTitle}". Để ráo nước.` },
+      { stepNumber: 2, instruction: 'Ướp nguyên liệu chính với 1 thìa nước mắm ngon, 1/2 thìa tiêu, 1 thìa hạt nêm trong 10-15 phút cho ngấm vị.' },
+      { stepNumber: 3, instruction: 'Phi thơm hành tỏi băm trong chảo/nồi nóng với dầu ăn, trút nguyên liệu vào nấu/xào ở lửa vừa đến khi chín mềm dậy mùi thơm nức.' },
+      { stepNumber: 4, instruction: 'Nêm nếm lại gia vị vừa khẩu vị, rắc hành ngò tiêu sọ lên trên, bày ra đĩa và thưởng thức nóng cùng cơm trắng.' },
+    ],
+  };
+
+  if (!process.env.GEMINI_API_KEY) {
+    return fallbackRecipe;
+  }
+
+  const prompt = `
+Bạn là Master Chef chuyên gia ẩm thực Việt Nam.
+Hãy cung cấp CÔNG THỨC NẤU ĂN CHI TIẾT VÀ CHUẨN VỊ cho món: "${cleanTitle}".
+
+Nhiệm vụ: Trả về DUY NHẤT một JSON Object đúng cấu trúc sau:
+{
+  "title": "${cleanTitle}",
+  "description": "Mô tả ngắn hấp dẫn về hương vị món ăn (1-2 câu)",
+  "prepTimeMinutes": 10,
+  "cookTimeMinutes": 15,
+  "servings": 2,
+  "difficulty": "EASY hoặc MEDIUM hoặc HARD",
+  "appliance": "STOVE hoặc AIRFRYER hoặc RICE_COOKER hoặc MICROWAVE",
+  "ingredients": [
+    {
+      "name": "Tên nguyên liệu",
+      "normalized_name": "ten nguyen lieu khong dau",
+      "quantity": "200",
+      "unit": "gram/quả/thìa",
+      "isOptional": false
+    }
+  ],
+  "ingredientKeywords": ["nguyên liệu 1", "nguyên liệu 2"],
+  "instructions": [
+    {
+      "stepNumber": 1,
+      "instruction": "Mô tả chi tiết bước 1"
+    },
+    {
+      "stepNumber": 2,
+      "instruction": "Mô tả chi tiết bước 2"
+    },
+    {
+      "stepNumber": 3,
+      "instruction": "Mô tả chi tiết bước 3"
+    },
+    {
+      "stepNumber": 4,
+      "instruction": "Mô tả chi tiết bước 4"
+    }
+  ]
+}
+Chỉ trả về JSON thuần túy, không có text hay markdown.
+`;
+
+  try {
+    const aiResult = await callGeminiFlash({ prompt, temperature: 0.3 });
+    if (aiResult && aiResult.title && Array.isArray(aiResult.instructions) && aiResult.instructions.length > 0) {
+      return {
+        ...aiResult,
+        imageUrl: aiResult.imageUrl || imageUrl,
+      };
+    }
+    return fallbackRecipe;
+  } catch (err) {
+    console.log('[AI Recipe Generator] Fallback to structured recipe:', err.message);
+    return fallbackRecipe;
   }
 };
 
@@ -430,5 +561,7 @@ module.exports = {
   scanFoodOrReceiptImage,
   parseVoiceOrTextPrompt,
   suggestWeeklyMealPlan,
+  generateRecipeDetailsForDish,
+  getRelevantDishImage,
 };
 

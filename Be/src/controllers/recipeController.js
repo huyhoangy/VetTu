@@ -1,7 +1,9 @@
+const mongoose = require('mongoose');
 const Recipe = require('../models/Recipe');
 const User = require('../models/User');
 const { matchRecipesWithPantry } = require('../services/recipeMatcherService');
 const recipeSeeds = require('../seeds/recipeSeeds');
+const aiService = require('../services/aiService');
 
 // @desc    Match recipes based on user pantry ingredients
 // @route   POST /api/recipes/match
@@ -43,29 +45,40 @@ const matchRecipes = async (req, res, next) => {
   }
 };
 
-// @desc    Get all recipes (with optional search query)
+// @desc    Get all recipes with search, appliance & filter params
 // @route   GET /api/recipes
 // @access  Public
 const getAllRecipes = async (req, res, next) => {
   try {
-    const { q, difficulty } = req.query;
-    let query = {};
+    const { appliance, search, difficulty, limit = 50 } = req.query;
 
-    if (q) {
-      query.$or = [
-        { title: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } },
-        { ingredientKeywords: { $in: [new RegExp(q, 'i')] } },
+    let filter = {};
+
+    if (appliance && appliance !== 'ALL') {
+      filter.$or = [
+        { appliance: appliance.toUpperCase() },
+        { appliance: 'ALL' },
+        { appliance: { $exists: false } },
       ];
     }
 
     if (difficulty) {
-      query.difficulty = difficulty.toUpperCase();
+      filter.difficulty = difficulty.toUpperCase();
     }
 
-    const recipes = await Recipe.find(query)
+    if (search && search.trim() !== '') {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      filter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { ingredientKeywords: searchRegex },
+      ];
+    }
+
+    const recipes = await Recipe.find(filter)
       .populate('createdBy', 'name avatar')
-      .sort({ createdAt: -1 });
+      .limit(Number(limit))
+      .sort({ likesCount: -1, createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -78,10 +91,49 @@ const getAllRecipes = async (req, res, next) => {
   }
 };
 
-// @desc    Get single recipe by ID
-// @route   GET /api/recipes/:id
-// @access  Public
-// @desc    Get single recipe by ID
+/**
+ * Smart lookup helper for recipes
+ */
+const findMatchingRecipe = async (title) => {
+  if (!title || typeof title !== 'string') return null;
+  const cleanTitle = title.trim();
+
+  // 1. Exact match (case-insensitive)
+  let recipe = await Recipe.findOne({
+    title: { $regex: `^${cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+  }).populate('createdBy', 'name avatar');
+  if (recipe) return recipe;
+
+  // 2. Partial match
+  recipe = await Recipe.findOne({
+    title: { $regex: cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' },
+  }).populate('createdBy', 'name avatar');
+  if (recipe) return recipe;
+
+  // 3. If composite title (e.g. "Gà xào sả ớt + Canh bí đao", "Bún thịt nướng / Bún chả giò")
+  const parts = cleanTitle.split(/[+/&,]| và | hoặc /i).map((p) => p.trim()).filter(Boolean);
+  if (parts.length > 1) {
+    for (const part of parts) {
+      const partRecipe = await Recipe.findOne({
+        title: { $regex: part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' },
+      }).populate('createdBy', 'name avatar');
+      if (partRecipe) return partRecipe;
+    }
+  }
+
+  // 4. Reverse contains match (a DB title is contained inside query title)
+  const allDbRecipes = await Recipe.find({}).select('title imageUrl');
+  const matched = allDbRecipes.find((r) =>
+    r.title && (cleanTitle.toLowerCase().includes(r.title.toLowerCase()) || r.title.toLowerCase().includes(cleanTitle.toLowerCase()))
+  );
+  if (matched) {
+    return await Recipe.findById(matched._id).populate('createdBy', 'name avatar');
+  }
+
+  return null;
+};
+
+// @desc    Get single recipe by ID or smart title lookup
 // @route   GET /api/recipes/:id
 // @access  Public
 const getRecipeById = async (req, res, next) => {
@@ -94,8 +146,34 @@ const getRecipeById = async (req, res, next) => {
       recipe = await Recipe.findById(id).populate('createdBy', 'name avatar');
     }
 
-    if (!recipe && title) {
-      recipe = await Recipe.findOne({ title }).populate('createdBy', 'name avatar');
+    if (!recipe && (title || id === 'lookup')) {
+      const targetQuery = title || id;
+      recipe = await findMatchingRecipe(targetQuery);
+    }
+
+    // If still not found and a title or name was requested, dynamically generate a full recipe using AI / culinary engine!
+    if (!recipe && (title || (id && id !== 'lookup' && isNaN(id)))) {
+      const dishTitle = title || id;
+      try {
+        let systemUser = await User.findOne();
+        if (!systemUser) {
+          systemUser = await User.create({
+            name: 'Vét Tủ Master Chef',
+            email: 'chef@vettu.app',
+            password: 'password123',
+            avatar: 'https://images.unsplash.com/photo-1577219491135-ce391730fb2c?q=80&w=400',
+          });
+        }
+
+        const generatedData = await aiService.generateRecipeDetailsForDish(dishTitle);
+        recipe = await Recipe.create({
+          ...generatedData,
+          createdBy: systemUser._id,
+        });
+        recipe = await Recipe.findById(recipe._id).populate('createdBy', 'name avatar');
+      } catch (genErr) {
+        console.log('[getRecipeById] Recipe generation fallback:', genErr.message);
+      }
     }
 
     if (!recipe) {
@@ -151,8 +229,6 @@ const seedRecipes = async (req, res, next) => {
     next(error);
   }
 };
-
-const mongoose = require('mongoose');
 
 // @desc    Toggle favorite/bookmark recipe for user
 // @route   POST /api/recipes/:id/favorite

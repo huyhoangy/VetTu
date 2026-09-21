@@ -263,6 +263,24 @@ const MealPlannerScreen = ({ navigation }) => {
     );
   };
 
+  // View Recipe Details for any meal
+  const handleViewRecipe = (assignedMeal) => {
+    if (!assignedMeal) return;
+    const targetRecipeId = assignedMeal.recipe?._id || (typeof assignedMeal.recipe === 'string' ? assignedMeal.recipe : null);
+    const dishTitle = assignedMeal.customDishName || assignedMeal.recipe?.title || 'Món ngon';
+    const dishImage = assignedMeal.dishImage || assignedMeal.recipe?.imageUrl || '';
+
+    navigation.navigate('RecipeDetail', {
+      recipeId: targetRecipeId || 'lookup',
+      recipe: typeof assignedMeal.recipe === 'object' && assignedMeal.recipe?._id
+        ? assignedMeal.recipe
+        : {
+            title: dishTitle,
+            imageUrl: dishImage,
+          },
+    });
+  };
+
   // Get active day meals
   const selectedDayObj = planData?.days?.find((d) => d.dayIndex === selectedDayIndex);
   const selectedDayMeals = selectedDayObj?.meals || [];
@@ -455,27 +473,26 @@ const MealPlannerScreen = ({ navigation }) => {
                         />
                       </TouchableOpacity>
 
-                      {assignedMeal.dishImage ? (
-                        <Image
-                          source={{ uri: assignedMeal.dishImage }}
-                          style={styles.dishImage}
-                        />
-                      ) : (
-                        <View style={styles.dishImageFallback}>
-                          <Text style={{ fontSize: 24 }}>{slotInfo.emoji}</Text>
-                        </View>
-                      )}
+                      <TouchableOpacity
+                        onPress={() => handleViewRecipe(assignedMeal)}
+                        activeOpacity={0.8}
+                      >
+                        {assignedMeal.dishImage ? (
+                          <Image
+                            source={{ uri: assignedMeal.dishImage }}
+                            style={styles.dishImage}
+                          />
+                        ) : (
+                          <View style={styles.dishImageFallback}>
+                            <Text style={{ fontSize: 24 }}>{slotInfo.emoji}</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
 
                       <TouchableOpacity
                         style={styles.dishDetails}
-                        onPress={() => {
-                          if (assignedMeal.recipe) {
-                            navigation.navigate('RecipeDetail', {
-                              recipeId: assignedMeal.recipe._id || assignedMeal.recipe,
-                            });
-                          }
-                        }}
-                        activeOpacity={assignedMeal.recipe ? 0.7 : 1}
+                        onPress={() => handleViewRecipe(assignedMeal)}
+                        activeOpacity={0.7}
                       >
                         <Text
                           style={[
@@ -491,12 +508,10 @@ const MealPlannerScreen = ({ navigation }) => {
                             {assignedMeal.note}
                           </Text>
                         ) : null}
-                        {assignedMeal.recipe && (
-                          <View style={styles.recipeTag}>
-                            <Ionicons name="book-outline" size={12} color={Colors.primary} />
-                            <Text style={styles.recipeTagText}>Xem công thức</Text>
-                          </View>
-                        )}
+                        <View style={styles.recipeTag}>
+                          <Ionicons name="book-outline" size={12} color={Colors.primary} />
+                          <Text style={styles.recipeTagText}>Xem công thức chi tiết ➔</Text>
+                        </View>
                       </TouchableOpacity>
 
                       <TouchableOpacity
